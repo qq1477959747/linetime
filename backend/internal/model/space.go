@@ -16,14 +16,16 @@ const (
 )
 
 type Space struct {
-	ID         uuid.UUID      `gorm:"type:uuid;primary_key;" json:"id"`
-	Name       string         `gorm:"type:varchar(100);not null" json:"name"`
-	InviteCode string         `gorm:"type:varchar(8);uniqueIndex;not null" json:"invite_code"`
-	InviteLink string         `gorm:"type:text;not null" json:"invite_link"`
-	OwnerID    uuid.UUID      `gorm:"type:uuid;not null;index" json:"owner_id"`
-	Type       SpaceType      `gorm:"type:varchar(20);not null" json:"type"`
-	CreatedAt  time.Time      `json:"created_at"`
-	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
+	ID          uuid.UUID      `gorm:"type:uuid;primary_key;" json:"id"`
+	Name        string         `gorm:"type:varchar(100);not null" json:"name"`
+	Description string         `gorm:"type:text" json:"description"`
+	InviteCode  string         `gorm:"type:varchar(8);uniqueIndex;not null" json:"invite_code"`
+	InviteLink  string         `gorm:"type:text;not null" json:"invite_link"`
+	OwnerID     uuid.UUID      `gorm:"type:uuid;not null;index" json:"owner_id"`
+	Type        SpaceType      `gorm:"type:varchar(20);not null" json:"type"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 
 	// 关联
 	Owner   User          `gorm:"foreignKey:OwnerID" json:"owner,omitempty"`

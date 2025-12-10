@@ -21,8 +21,9 @@ func NewSpaceService(spaceRepo *repository.SpaceRepository) *SpaceService {
 }
 
 type CreateSpaceRequest struct {
-	Name string           `json:"name" binding:"required"`
-	Type model.SpaceType `json:"type" binding:"required"`
+	Name        string          `json:"name" binding:"required"`
+	Description string          `json:"description"`
+	Type        model.SpaceType `json:"type"`
 }
 
 type JoinSpaceRequest struct {
@@ -49,6 +50,11 @@ func GenerateInviteCode() string {
 
 // CreateSpace 创建空间并自动添加创建者为 owner
 func (s *SpaceService) CreateSpace(req *CreateSpaceRequest, ownerID uuid.UUID) (*model.Space, error) {
+	// 如果没有指定类型，默认为 personal
+	if req.Type == "" {
+		req.Type = model.SpaceTypePersonal
+	}
+
 	// 验证空间类型
 	if req.Type != model.SpaceTypePersonal && req.Type != model.SpaceTypeCouple && req.Type != model.SpaceTypeGroup {
 		return nil, errors.New("无效的空间类型")
@@ -60,11 +66,12 @@ func (s *SpaceService) CreateSpace(req *CreateSpaceRequest, ownerID uuid.UUID) (
 
 	// 创建空间
 	space := &model.Space{
-		Name:       req.Name,
-		InviteCode: inviteCode,
-		InviteLink: fmt.Sprintf("https://linetime.app/invite/%s", inviteCode),
-		OwnerID:    ownerID,
-		Type:       req.Type,
+		Name:        req.Name,
+		Description: req.Description,
+		InviteCode:  inviteCode,
+		InviteLink:  fmt.Sprintf("https://linetime.app/invite/%s", inviteCode),
+		OwnerID:     ownerID,
+		Type:        req.Type,
 	}
 
 	if err := s.spaceRepo.Create(space); err != nil {

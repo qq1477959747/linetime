@@ -26,12 +26,16 @@ export interface AuthResponse {
 }
 
 // 空间相关类型
+export type SpaceType = 'personal' | 'couple' | 'group';
+
 export interface Space {
   id: string;
   name: string;
   description?: string;
   owner_id: string;
   invite_code: string;
+  invite_link: string;
+  type: SpaceType;
   created_at: string;
   updated_at: string;
 }
@@ -39,6 +43,7 @@ export interface Space {
 export interface CreateSpaceRequest {
   name: string;
   description?: string;
+  type?: SpaceType;
 }
 
 export interface SpaceMember {
