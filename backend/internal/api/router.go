@@ -1,13 +1,17 @@
 package api
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 	"github.com/qq1477959747/linetime/backend/internal/api/auth"
 	"github.com/qq1477959747/linetime/backend/internal/api/event"
 	"github.com/qq1477959747/linetime/backend/internal/api/space"
+	"github.com/qq1477959747/linetime/backend/internal/api/upload"
 	"github.com/qq1477959747/linetime/backend/internal/middleware"
 	"github.com/qq1477959747/linetime/backend/internal/repository"
 	"github.com/qq1477959747/linetime/backend/internal/service"
+	"github.com/qq1477959747/linetime/backend/internal/storage"
 	"gorm.io/gorm"
 )
 
@@ -71,8 +75,19 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 			eventsGroup.GET("/spaces/:space_id", eventHandler.GetEventsBySpace)       // 获取空间事件列表
 		}
 
-		// TODO: 添加图片上传路由
-		// uploadGroup := v1.Group("/upload", middleware.AuthMiddleware())
+		// 图片上传路由
+		uploadGroup := v1.Group("/upload", middleware.AuthMiddleware())
+		{
+			minioStorage, err := storage.NewMinIOStorage()
+			if err != nil {
+				log.Fatalf("初始化 MinIO 存储失败: %v", err)
+			}
+			uploadService := service.NewUploadService(minioStorage)
+			uploadHandler := upload.NewHandler(uploadService)
+
+			uploadGroup.POST("/image", uploadHandler.UploadImage)   // 上传单张图片
+			uploadGroup.POST("/images", uploadHandler.UploadImages) // 批量上传图片
+		}
 	}
 
 	return r

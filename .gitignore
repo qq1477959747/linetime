@@ -14,6 +14,7 @@ backend/.env
 backend/.env.*
 backend/tmp/
 backend/bin/
+backend/linetime
 
 # Frontend
 frontend/node_modules/
@@ -32,6 +33,7 @@ frontend/.turbo
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
