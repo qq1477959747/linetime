@@ -13,7 +13,9 @@
       "Bash(docker-compose up:*)",
       "Bash(go run:*)",
       "Bash(curl:*)",
-      "Bash(PGPASSWORD='Qq1477959747!' psql -h 106.13.230.26 -U postgres -c \"CREATE DATABASE linetime;\")"
+      "Bash(PGPASSWORD='Qq1477959747!' psql -h 106.13.230.26 -U postgres -c \"CREATE DATABASE linetime;\")",
+      "Bash(git commit:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZWU1YmQ1MDMtYTk4OC00NTkyLWE0YTgtODdhOGM2YTM2MDhmIiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsImV4cCI6MTc2NTMzNjM1OSwiaWF0IjoxNzY1MzI5MTU5fQ.1Oz6Ova1Niq5nkMJfAOWFL2DNZbxHTs10Hr0UnaUvT0\")"
     ],
     "deny": [],
     "ask": []

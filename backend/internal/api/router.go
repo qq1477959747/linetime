@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/qq1477959747/linetime/backend/internal/api/auth"
+	"github.com/qq1477959747/linetime/backend/internal/api/space"
 	"github.com/qq1477959747/linetime/backend/internal/middleware"
 	"github.com/qq1477959747/linetime/backend/internal/repository"
 	"github.com/qq1477959747/linetime/backend/internal/service"
@@ -38,8 +39,23 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 			authGroup.GET("/me", middleware.AuthMiddleware(), authHandler.GetMe)
 		}
 
+		// 空间路由
+		spacesGroup := v1.Group("/spaces", middleware.AuthMiddleware())
+		{
+			spaceRepo := repository.NewSpaceRepository(db)
+			spaceService := service.NewSpaceService(spaceRepo)
+			spaceHandler := space.NewHandler(spaceService)
+
+			spacesGroup.POST("", spaceHandler.CreateSpace)                     // 创建空间
+			spacesGroup.GET("", spaceHandler.GetUserSpaces)                    // 获取用户的所有空间
+			spacesGroup.GET("/:id", spaceHandler.GetSpaceByID)                 // 获取空间详情
+			spacesGroup.POST("/:id/invite", spaceHandler.RefreshInviteCode)    // 刷新邀请码
+			spacesGroup.POST("/join/:code", spaceHandler.JoinSpace)            // 加入空间
+			spacesGroup.GET("/:id/members", spaceHandler.GetSpaceMembers)      // 获取空间成员
+			spacesGroup.DELETE("/:id/members/:user_id", spaceHandler.RemoveMember) // 移除成员
+		}
+
 		// TODO: 添加其他模块路由
-		// spacesGroup := v1.Group("/spaces", middleware.AuthMiddleware())
 		// eventsGroup := v1.Group("/events", middleware.AuthMiddleware())
 		// uploadGroup := v1.Group("/upload", middleware.AuthMiddleware())
 	}

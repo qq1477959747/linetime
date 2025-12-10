@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -68,78 +69,95 @@ func Load() {
 
 	AppConfig = &Config{
 		Server: ServerConfig{
-			Port:    getEnv("SERVER_PORT", "8080"),
-			GinMode: getEnv("GIN_MODE", "debug"),
+			Port:    mustGetEnv("SERVER_PORT"),
+			GinMode: mustGetEnv("GIN_MODE"),
 		},
 		Database: DatabaseConfig{
-			Host:     getEnv("DB_HOST", "localhost"),
-			Port:     getEnv("DB_PORT", "5432"),
-			User:     getEnv("DB_USER", "linetime"),
-			Password: getEnv("DB_PASSWORD", "linetime_dev"),
-			DBName:   getEnv("DB_NAME", "linetime"),
-			SSLMode:  getEnv("DB_SSL_MODE", "disable"),
+			Host:     mustGetEnv("DB_HOST"),
+			Port:     mustGetEnv("DB_PORT"),
+			User:     mustGetEnv("DB_USER"),
+			Password: mustGetEnv("DB_PASSWORD"),
+			DBName:   mustGetEnv("DB_NAME"),
+			SSLMode:  mustGetEnv("DB_SSL_MODE"),
 		},
 		Redis: RedisConfig{
-			Host:     getEnv("REDIS_HOST", "localhost:6379"),
-			Password: getEnv("REDIS_PASSWORD", ""),
-			DB:       getEnvAsInt("REDIS_DB", 0),
+			Host:     mustGetEnv("REDIS_HOST"),
+			Password: getEnv("REDIS_PASSWORD"),
+			DB:       mustGetEnvAsInt("REDIS_DB"),
 		},
 		MinIO: MinIOConfig{
-			Endpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
-			AccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
-			SecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),
-			Bucket:    getEnv("MINIO_BUCKET", "linetime"),
-			UseSSL:    getEnvAsBool("MINIO_USE_SSL", false),
+			Endpoint:  mustGetEnv("MINIO_ENDPOINT"),
+			AccessKey: mustGetEnv("MINIO_ACCESS_KEY"),
+			SecretKey: mustGetEnv("MINIO_SECRET_KEY"),
+			Bucket:    mustGetEnv("MINIO_BUCKET"),
+			UseSSL:    mustGetEnvAsBool("MINIO_USE_SSL"),
 		},
 		JWT: JWTConfig{
-			Secret:        getEnv("JWT_SECRET", "your-secret-key"),
-			AccessExpire:  parseDuration(getEnv("JWT_ACCESS_EXPIRE", "2h")),
-			RefreshExpire: parseDuration(getEnv("JWT_REFRESH_EXPIRE", "168h")),
+			Secret:        mustGetEnv("JWT_SECRET"),
+			AccessExpire:  mustParseDuration(mustGetEnv("JWT_ACCESS_EXPIRE")),
+			RefreshExpire: mustParseDuration(mustGetEnv("JWT_REFRESH_EXPIRE")),
 		},
 		Upload: UploadConfig{
-			MaxFileSize:       getEnvAsInt64("MAX_FILE_SIZE", 10485760),
-			MaxFilesPerUpload: getEnvAsInt("MAX_FILES_PER_UPLOAD", 9),
-			AllowedFileTypes:  getEnv("ALLOWED_FILE_TYPES", "jpg,jpeg,png,gif,webp"),
+			MaxFileSize:       mustGetEnvAsInt64("MAX_FILE_SIZE"),
+			MaxFilesPerUpload: mustGetEnvAsInt("MAX_FILES_PER_UPLOAD"),
+			AllowedFileTypes:  mustGetEnv("ALLOWED_FILE_TYPES"),
 		},
 	}
 }
 
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
+func getEnv(key string) string {
+	return os.Getenv(key)
 }
 
-func getEnvAsInt(key string, defaultValue int) int {
-	valueStr := getEnv(key, "")
-	if value, err := strconv.Atoi(valueStr); err == nil {
-		return value
+func mustGetEnv(key string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		log.Fatalf("环境变量 %s 未设置", key)
 	}
-	return defaultValue
+	return value
 }
 
-func getEnvAsInt64(key string, defaultValue int64) int64 {
-	valueStr := getEnv(key, "")
-	if value, err := strconv.ParseInt(valueStr, 10, 64); err == nil {
-		return value
+func mustGetEnvAsInt(key string) int {
+	valueStr := mustGetEnv(key)
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		log.Fatalf("环境变量 %s 必须是整数: %v", key, err)
 	}
-	return defaultValue
+	return value
 }
 
-func getEnvAsBool(key string, defaultValue bool) bool {
-	valueStr := getEnv(key, "")
-	if value, err := strconv.ParseBool(valueStr); err == nil {
-		return value
+func mustGetEnvAsInt64(key string) int64 {
+	valueStr := mustGetEnv(key)
+	value, err := strconv.ParseInt(valueStr, 10, 64)
+	if err != nil {
+		log.Fatalf("环境变量 %s 必须是整数: %v", key, err)
 	}
-	return defaultValue
+	return value
 }
 
-func parseDuration(s string) time.Duration {
+func mustGetEnvAsBool(key string) bool {
+	valueStr := mustGetEnv(key)
+	value, err := strconv.ParseBool(valueStr)
+	if err != nil {
+		log.Fatalf("环境变量 %s 必须是布尔值: %v", key, err)
+	}
+	return value
+}
+
+func mustParseDuration(s string) time.Duration {
 	duration, err := time.ParseDuration(s)
 	if err != nil {
-		log.Printf("解析时间失败: %v, 使用默认值 2h", err)
-		return 2 * time.Hour
+		log.Fatalf("解析时间失败: %v", err)
 	}
 	return duration
+}
+
+func Validate() error {
+	if AppConfig.JWT.Secret == "" {
+		return fmt.Errorf("JWT_SECRET 不能为空")
+	}
+	if AppConfig.Database.Password == "" {
+		return fmt.Errorf("DB_PASSWORD 不能为空")
+	}
+	return nil
 }
