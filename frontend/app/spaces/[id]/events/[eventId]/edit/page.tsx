@@ -11,7 +11,7 @@ import { getErrorMessage } from '@/lib/utils';
 export default function EditEventPage() {
   const params = useParams();
   const router = useRouter();
-  const spaceId = params.spaceId as string;
+  const spaceId = params.id as string;
   const eventId = params.eventId as string;
 
   const { currentEvent, selectEvent, updateEvent, isLoading } = useEventStore();
