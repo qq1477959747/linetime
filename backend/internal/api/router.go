@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/qq1477959747/linetime/backend/internal/api/auth"
+	"github.com/qq1477959747/linetime/backend/internal/api/event"
 	"github.com/qq1477959747/linetime/backend/internal/api/space"
 	"github.com/qq1477959747/linetime/backend/internal/middleware"
 	"github.com/qq1477959747/linetime/backend/internal/repository"
@@ -55,8 +56,22 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 			spacesGroup.DELETE("/:id/members/:user_id", spaceHandler.RemoveMember) // 移除成员
 		}
 
-		// TODO: 添加其他模块路由
-		// eventsGroup := v1.Group("/events", middleware.AuthMiddleware())
+		// 事件路由
+		eventsGroup := v1.Group("/events", middleware.AuthMiddleware())
+		{
+			eventRepo := repository.NewEventRepository(db)
+			spaceRepo := repository.NewSpaceRepository(db)
+			eventService := service.NewEventService(eventRepo, spaceRepo)
+			eventHandler := event.NewHandler(eventService)
+
+			eventsGroup.POST("", eventHandler.CreateEvent)                            // 创建事件
+			eventsGroup.GET("/:id", eventHandler.GetEventByID)                        // 获取事件详情
+			eventsGroup.PUT("/:id", eventHandler.UpdateEvent)                         // 更新事件
+			eventsGroup.DELETE("/:id", eventHandler.DeleteEvent)                      // 删除事件
+			eventsGroup.GET("/spaces/:space_id", eventHandler.GetEventsBySpace)       // 获取空间事件列表
+		}
+
+		// TODO: 添加图片上传路由
 		// uploadGroup := v1.Group("/upload", middleware.AuthMiddleware())
 	}
 
