@@ -22,12 +22,15 @@ func NewEventService(eventRepo *repository.EventRepository, spaceRepo *repositor
 }
 
 type CreateEventRequest struct {
-	SpaceID   uuid.UUID          `json:"space_id" binding:"required"`
-	EventDate time.Time          `json:"event_date" binding:"required"`
-	EventTime *time.Time         `json:"event_time"`
-	Title     string             `json:"title"`
-	Content   string             `json:"content"`
-	Images    []EventImageUpload `json:"images"`
+	SpaceID     uuid.UUID  `json:"space_id" binding:"required"`
+	EventDate   time.Time  `json:"event_date" binding:"required"`
+	EventTime   *time.Time `json:"event_time"`
+	Title       string     `json:"title"`
+	Content     string     `json:"content"`
+	Description string     `json:"description"`
+	Location    string     `json:"location"`
+	Tags        []string   `json:"tags"`
+	Images      []string   `json:"images"`
 }
 
 type EventImageUpload struct {
@@ -37,10 +40,14 @@ type EventImageUpload struct {
 }
 
 type UpdateEventRequest struct {
-	EventDate *time.Time `json:"event_date"`
-	EventTime *time.Time `json:"event_time"`
-	Title     *string    `json:"title"`
-	Content   *string    `json:"content"`
+	EventDate   *time.Time `json:"event_date"`
+	EventTime   *time.Time `json:"event_time"`
+	Title       *string    `json:"title"`
+	Content     *string    `json:"content"`
+	Description *string    `json:"description"`
+	Location    *string    `json:"location"`
+	Tags        []string   `json:"tags"`
+	Images      []string   `json:"images"`
 }
 
 type QueryEventsRequest struct {
@@ -64,32 +71,20 @@ func (s *EventService) CreateEvent(req *CreateEventRequest, userID uuid.UUID) (*
 
 	// 创建事件
 	event := &model.Event{
-		SpaceID:   req.SpaceID,
-		UserID:    userID,
-		EventDate: req.EventDate,
-		EventTime: req.EventTime,
-		Title:     req.Title,
-		Content:   req.Content,
+		SpaceID:     req.SpaceID,
+		UserID:      userID,
+		EventDate:   req.EventDate,
+		EventTime:   req.EventTime,
+		Title:       req.Title,
+		Content:     req.Content,
+		Description: req.Description,
+		Location:    req.Location,
+		Tags:        req.Tags,
+		ImageURLs:   req.Images,
 	}
 
 	if err := s.eventRepo.Create(event); err != nil {
 		return nil, err
-	}
-
-	// 添加图片
-	if len(req.Images) > 0 {
-		images := make([]model.EventImage, 0, len(req.Images))
-		for i, img := range req.Images {
-			images = append(images, model.EventImage{
-				EventID:      event.ID,
-				ImageURL:     img.ImageURL,
-				ThumbnailURL: img.ThumbnailURL,
-				SortOrder:    i, // 如果没有指定 SortOrder，使用索引
-			})
-		}
-		if err := s.eventRepo.AddImages(images); err != nil {
-			return nil, err
-		}
 	}
 
 	// 重新查询完整的事件数据
@@ -163,6 +158,18 @@ func (s *EventService) UpdateEvent(eventID, userID uuid.UUID, req *UpdateEventRe
 	}
 	if req.Content != nil {
 		event.Content = *req.Content
+	}
+	if req.Description != nil {
+		event.Description = *req.Description
+	}
+	if req.Location != nil {
+		event.Location = *req.Location
+	}
+	if req.Tags != nil {
+		event.Tags = req.Tags
+	}
+	if req.Images != nil {
+		event.ImageURLs = req.Images
 	}
 
 	if err := s.eventRepo.Update(event); err != nil {

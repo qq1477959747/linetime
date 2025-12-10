@@ -49,7 +49,7 @@ export default function EventDetailPage() {
     );
   }
 
-  const isCreator = user && currentEvent.created_by === user.id;
+  const isCreator = user && currentEvent.user_id === user.id;
 
   return (
     <div className="min-h-screen bg-gray-50">

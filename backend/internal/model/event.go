@@ -8,16 +8,20 @@ import (
 )
 
 type Event struct {
-	ID        uuid.UUID      `gorm:"type:uuid;primary_key;" json:"id"`
-	SpaceID   uuid.UUID      `gorm:"type:uuid;not null;index:idx_space_date,priority:1" json:"space_id"`
-	UserID    uuid.UUID      `gorm:"type:uuid;not null;index" json:"user_id"`
-	EventDate time.Time      `gorm:"type:date;not null;index:idx_space_date,priority:2" json:"event_date"`
-	EventTime *time.Time     `gorm:"type:time" json:"event_time"`
-	Title     string         `gorm:"type:varchar(200)" json:"title"`
-	Content   string         `gorm:"type:text" json:"content"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	ID          uuid.UUID      `gorm:"type:uuid;primary_key;" json:"id"`
+	SpaceID     uuid.UUID      `gorm:"type:uuid;not null;index:idx_space_date,priority:1" json:"space_id"`
+	UserID      uuid.UUID      `gorm:"type:uuid;not null;index" json:"user_id"`
+	EventDate   time.Time      `gorm:"type:date;not null;index:idx_space_date,priority:2" json:"event_date"`
+	EventTime   *time.Time     `gorm:"type:time" json:"event_time"`
+	Title       string         `gorm:"type:varchar(200)" json:"title"`
+	Content     string         `gorm:"type:text" json:"content"`
+	Description string         `gorm:"type:text" json:"description"`
+	Location    string         `gorm:"type:varchar(200)" json:"location"`
+	Tags        []string       `gorm:"type:text[]" json:"tags"`
+	ImageURLs   []string       `gorm:"type:text[]" json:"images"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 
 	// 关联
 	Space  Space        `gorm:"foreignKey:SpaceID" json:"space,omitempty"`

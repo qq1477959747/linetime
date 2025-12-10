@@ -59,13 +59,15 @@ export interface SpaceMember {
 export interface Event {
   id: string;
   space_id: string;
+  user_id: string;  // 后端返回的是 user_id，不是 created_by
   title: string;
+  content?: string;
   description?: string;
   images?: string[];
   event_date: string;
+  event_time?: string;
   location?: string;
   tags?: string[];
-  created_by: string;
   created_at: string;
   updated_at: string;
 }
