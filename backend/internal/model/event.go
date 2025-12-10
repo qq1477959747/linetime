@@ -17,8 +17,8 @@ type Event struct {
 	Content     string         `gorm:"type:text" json:"content"`
 	Description string         `gorm:"type:text" json:"description"`
 	Location    string         `gorm:"type:varchar(200)" json:"location"`
-	Tags        []string       `gorm:"type:text[]" json:"tags"`
-	ImageURLs   []string       `gorm:"type:text[]" json:"images"`
+	Tags        []string       `gorm:"type:jsonb;serializer:json" json:"tags"`
+	ImageURLs   []string       `gorm:"type:jsonb;serializer:json" json:"images"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
