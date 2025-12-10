@@ -23,9 +23,11 @@ export const useEventStore = create<EventState>((set) => ({
     set({ isLoading: true });
     try {
       const response = await eventApi.getBySpace(spaceId, params);
-      set({ events: response.data, isLoading: false });
+      // 确保返回的是有效数组
+      const events = Array.isArray(response.data) ? response.data.filter(e => e && e.id) : [];
+      set({ events, isLoading: false });
     } catch (error) {
-      set({ isLoading: false });
+      set({ isLoading: false, events: [] });
       throw error;
     }
   },

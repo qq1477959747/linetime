@@ -142,7 +142,7 @@ export default function SpaceDetailPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {events.map((event) => (
+            {events.filter(event => event && event.id).map((event) => (
               <Link
                 key={event.id}
                 href={`/spaces/${spaceId}/events/${event.id}`}
