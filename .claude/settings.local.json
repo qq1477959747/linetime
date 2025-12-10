@@ -4,7 +4,16 @@
       "Bash(mkdir:*)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 添加 LineTime 项目设计文档\n\n- 完整的系统架构设计\n- 数据库设计（5个核心表）\n- RESTful API 设计\n- 前后端技术栈选型\n- 安全性与部署方案\n- 开发路线图\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 添加 LineTime 项目设计文档\n\n- 完整的系统架构设计\n- 数据库设计（5个核心表）\n- RESTful API 设计\n- 前后端技术栈选型\n- 安全性与部署方案\n- 开发路线图\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(gh:*)",
+      "Bash(git push:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(go mod init:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(go run:*)",
+      "Bash(curl:*)",
+      "Bash(PGPASSWORD='Qq1477959747!' psql -h 106.13.230.26 -U postgres -c \"CREATE DATABASE linetime;\")"
     ],
     "deny": [],
     "ask": []
