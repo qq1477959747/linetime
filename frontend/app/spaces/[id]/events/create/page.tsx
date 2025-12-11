@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useEventStore } from '@/stores/useEventStore';
-import { Button, Input, ImageUpload } from '@/components/ui';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { Button, Input, ImageUpload, Loading } from '@/components/ui';
 import { Header } from '@/components/layout/Header';
 import { getErrorMessage } from '@/lib/utils';
 
@@ -13,6 +14,7 @@ export default function CreateEventPage() {
   const router = useRouter();
   const spaceId = params.id as string;
   const { createEvent, isLoading } = useEventStore();
+  const { isAuthenticated, isLoading: authLoading, fetchUser } = useAuthStore();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -23,6 +25,28 @@ export default function CreateEventPage() {
     images: [] as string[],
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !authLoading) {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      if (!isAuthenticated) {
+        fetchUser().catch(() => {
+          router.push('/login');
+        });
+      }
+    }
+  }, [mounted, authLoading, isAuthenticated, fetchUser, router]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -77,6 +101,18 @@ export default function CreateEventPage() {
       setErrors({ submit: getErrorMessage(error) });
     }
   };
+
+  if (!mounted || authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading size="lg" text="加载中..." />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

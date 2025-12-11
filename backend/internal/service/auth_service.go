@@ -27,7 +27,7 @@ type RegisterRequest struct {
 }
 
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required"`
+	Username string `json:"username"` // 用户名或邮箱
 	Password string `json:"password" binding:"required"`
 }
 
@@ -42,6 +42,11 @@ func (s *AuthService) Register(req *RegisterRequest) (*AuthResponse, error) {
 	// 验证邮箱格式
 	if !validator.IsValidEmail(req.Email) {
 		return nil, errors.New("邮箱格式不正确")
+	}
+
+	// 验证邮箱域名是否在白名单中
+	if !validator.IsAllowedEmailDomain(req.Email) {
+		return nil, errors.New("请使用常用邮箱注册(如 QQ、163、Gmail 等)")
 	}
 
 	// 验证用户名
@@ -109,19 +114,31 @@ func (s *AuthService) Register(req *RegisterRequest) (*AuthResponse, error) {
 }
 
 func (s *AuthService) Login(req *LoginRequest) (*AuthResponse, error) {
-	// 查找用户
-	user, err := s.userRepo.FindByEmail(req.Email)
+	// 查找用户（支持用户名或邮箱）
+	var user *model.User
+	var err error
+
+	// 先尝试用户名查找
+	user, err = s.userRepo.FindByUsername(req.Username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("邮箱或密码错误")
+			// 如果用户名找不到，尝试邮箱查找
+			user, err = s.userRepo.FindByEmail(req.Username)
+			if err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return nil, errors.New("用户名或密码错误")
+				}
+				return nil, err
+			}
+		} else {
+			return nil, err
 		}
-		return nil, err
 	}
 
 	// 验证密码
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
 	if err != nil {
-		return nil, errors.New("邮箱或密码错误")
+		return nil, errors.New("用户名或密码错误")
 	}
 
 	// 生成 Token

@@ -1,21 +1,45 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSpaceStore } from '@/stores/useSpaceStore';
-import { Button, Input } from '@/components/ui';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { Button, Input, Loading } from '@/components/ui';
 import { Header } from '@/components/layout/Header';
 import { getErrorMessage } from '@/lib/utils';
 
 export default function CreateSpacePage() {
   const router = useRouter();
   const { createSpace, isLoading } = useSpaceStore();
+  const { isAuthenticated, isLoading: authLoading, fetchUser } = useAuthStore();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !authLoading) {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      if (!isAuthenticated) {
+        fetchUser().catch(() => {
+          router.push('/login');
+        });
+      }
+    }
+  }, [mounted, authLoading, isAuthenticated, fetchUser, router]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -51,6 +75,18 @@ export default function CreateSpacePage() {
       setErrors({ submit: getErrorMessage(error) });
     }
   };
+
+  if (!mounted || authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading size="lg" text="加载中..." />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

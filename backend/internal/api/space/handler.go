@@ -176,5 +176,27 @@ func (h *Handler) GetSpaceMembers(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, members)
+	// 转换为前端期望的格式
+	type MemberResponse struct {
+		UserID   string `json:"user_id"`
+		Username string `json:"username"`
+		Email    string `json:"email"`
+		Avatar   string `json:"avatar,omitempty"`
+		Role     string `json:"role"`
+		JoinedAt string `json:"joined_at"`
+	}
+
+	var memberResponses []MemberResponse
+	for _, member := range members {
+		memberResponses = append(memberResponses, MemberResponse{
+			UserID:   member.UserID.String(),
+			Username: member.User.Username,
+			Email:    member.User.Email,
+			Avatar:   member.User.AvatarURL,
+			Role:     string(member.Role),
+			JoinedAt: member.JoinedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+	}
+
+	response.Success(c, memberResponses)
 }

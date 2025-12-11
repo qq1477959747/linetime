@@ -15,16 +15,38 @@ export default function EventDetailPage() {
   const spaceId = params.id as string;
   const eventId = params.eventId as string;
 
-  const { user } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading, fetchUser } = useAuthStore();
   const { currentEvent, selectEvent, deleteEvent, isLoading } = useEventStore();
   const [deleting, setDeleting] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (eventId) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !authLoading) {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      if (!isAuthenticated) {
+        fetchUser().catch(() => {
+          router.push('/login');
+        });
+      }
+    }
+  }, [mounted, authLoading, isAuthenticated, fetchUser, router]);
+
+  useEffect(() => {
+    if (eventId && isAuthenticated) {
       selectEvent(eventId);
     }
-  }, [eventId, selectEvent]);
+  }, [eventId, isAuthenticated, selectEvent]);
 
   const handleDelete = async () => {
     if (!confirm('确定要删除这个事件吗？此操作不可恢复。')) {
@@ -40,6 +62,18 @@ export default function EventDetailPage() {
       setDeleting(false);
     }
   };
+
+  if (!mounted || authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading size="lg" text="加载中..." />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   if (isLoading || !currentEvent) {
     return (

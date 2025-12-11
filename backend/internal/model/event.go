@@ -26,7 +26,7 @@ type Event struct {
 	// 关联
 	Space  Space        `gorm:"foreignKey:SpaceID" json:"space,omitempty"`
 	User   User         `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Images []EventImage `gorm:"foreignKey:EventID" json:"images,omitempty"`
+	Images []EventImage `gorm:"foreignKey:EventID" json:"-"`
 }
 
 func (e *Event) BeforeCreate(tx *gorm.DB) error {

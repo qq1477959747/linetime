@@ -4,6 +4,7 @@ import { useState, FormEvent, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useEventStore } from '@/stores/useEventStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { Button, Input, Loading, ImageUpload } from '@/components/ui';
 import { Header } from '@/components/layout/Header';
 import { getErrorMessage } from '@/lib/utils';
@@ -14,6 +15,7 @@ export default function EditEventPage() {
   const spaceId = params.id as string;
   const eventId = params.eventId as string;
 
+  const { isAuthenticated, isLoading: authLoading, fetchUser } = useAuthStore();
   const { currentEvent, selectEvent, updateEvent, isLoading } = useEventStore();
   const [formData, setFormData] = useState({
     title: '',
@@ -25,12 +27,34 @@ export default function EditEventPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [updating, setUpdating] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (eventId) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !authLoading) {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      if (!isAuthenticated) {
+        fetchUser().catch(() => {
+          router.push('/login');
+        });
+      }
+    }
+  }, [mounted, authLoading, isAuthenticated, fetchUser, router]);
+
+  useEffect(() => {
+    if (eventId && isAuthenticated) {
       selectEvent(eventId);
     }
-  }, [eventId, selectEvent]);
+  }, [eventId, isAuthenticated, selectEvent]);
 
   useEffect(() => {
     if (currentEvent) {
@@ -99,6 +123,18 @@ export default function EditEventPage() {
       setUpdating(false);
     }
   };
+
+  if (!mounted || authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading size="lg" text="加载中..." />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   if (isLoading || !currentEvent) {
     return (

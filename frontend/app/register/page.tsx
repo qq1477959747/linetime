@@ -18,6 +18,25 @@ export default function RegisterPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // 常用邮箱域名白名单
+  const allowedEmailDomains = [
+    // 国内邮箱
+    'qq.com', '163.com', '126.com', 'sina.com', 'sina.cn',
+    'sohu.com', 'yeah.net', '139.com', 'wo.cn', '189.cn',
+    'aliyun.com', 'foxmail.com',
+    // 国际邮箱
+    'gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com',
+    'icloud.com', 'live.com', 'msn.com', 'aol.com',
+    'protonmail.com', 'zoho.com'
+  ];
+
+  const isAllowedEmailDomain = (email: string): boolean => {
+    const parts = email.split('@');
+    if (parts.length !== 2) return false;
+    const domain = parts[1].toLowerCase();
+    return allowedEmailDomains.includes(domain);
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -35,6 +54,8 @@ export default function RegisterPage() {
       newErrors.email = '请输入邮箱';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = '邮箱格式不正确';
+    } else if (!isAllowedEmailDomain(formData.email)) {
+      newErrors.email = '请使用常用邮箱注册(如 QQ、163、Gmail 等)';
     }
 
     // 密码验证
@@ -113,7 +134,7 @@ export default function RegisterPage() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               error={errors.email}
-              placeholder="your@email.com"
+              placeholder="请使用常用邮箱 (QQ、163、Gmail等)"
               disabled={isLoading}
             />
 
