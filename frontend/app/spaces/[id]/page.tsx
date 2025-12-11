@@ -25,19 +25,22 @@ export default function SpaceDetailPage() {
   }, []);
 
   useEffect(() => {
-    if (mounted && !authLoading) {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    if (!mounted) return;
+    
+    const token = typeof window !== 'undefined' 
+      ? (localStorage.getItem('access_token') || sessionStorage.getItem('access_token')) 
+      : null;
 
-      if (!token) {
-        router.push('/login');
-        return;
-      }
+    if (!token) {
+      router.push('/login');
+      return;
+    }
 
-      if (!isAuthenticated) {
-        fetchUser().catch(() => {
-          router.push('/login');
-        });
-      }
+    // 只有在没有认证且不在加载中时才获取用户信息
+    if (!isAuthenticated && !authLoading) {
+      fetchUser().catch(() => {
+        // fetchUser 失败时，apiClient 已经处理了 401 跳转
+      });
     }
   }, [mounted, authLoading, isAuthenticated, fetchUser, router]);
 
@@ -49,11 +52,28 @@ export default function SpaceDetailPage() {
   }, [spaceId, isAuthenticated, selectSpace, fetchEvents]);
 
   const isOwner = currentSpace && user && currentSpace.owner_id === user.id;
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const copyInviteCode = () => {
     if (currentSpace?.invite_code) {
       navigator.clipboard.writeText(currentSpace.invite_code);
       alert('邀请码已复制到剪贴板');
+    }
+  };
+
+  const handleDeleteSpace = async () => {
+    if (!currentSpace) return;
+    setIsDeleting(true);
+    try {
+      const { spaceApi } = await import('@/lib/api');
+      await spaceApi.delete(currentSpace.id);
+      router.push('/spaces');
+    } catch (error) {
+      alert('删除空间失败，请重试');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -80,28 +100,108 @@ export default function SpaceDetailPage() {
   return (
     <>
       <style jsx global>{`
-        /* Stagger animation for cards */
+        /* Timeline unfold animation */
+        @keyframes timeline-grow {
+          from {
+            height: 0;
+          }
+          to {
+            height: 100%;
+          }
+        }
+
         @keyframes fade-in-up {
           from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(30px) scale(0.95);
           }
           to {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
           }
         }
 
-        .event-card {
-          animation: fade-in-up 0.5s ease-out backwards;
+        @keyframes dot-pop {
+          0% {
+            opacity: 0;
+            transform: scale(0);
+          }
+          60% {
+            transform: scale(1.2);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
         }
 
-        .event-card:nth-child(1) { animation-delay: 0.1s; }
-        .event-card:nth-child(2) { animation-delay: 0.2s; }
-        .event-card:nth-child(3) { animation-delay: 0.3s; }
-        .event-card:nth-child(4) { animation-delay: 0.4s; }
-        .event-card:nth-child(5) { animation-delay: 0.5s; }
-        .event-card:nth-child(n+6) { animation-delay: 0.6s; }
+        @keyframes card-slide {
+          from {
+            opacity: 0;
+            transform: translateX(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        .timeline-line {
+          animation: timeline-grow 1.5s ease-out forwards;
+          transform-origin: top;
+        }
+
+        .event-card {
+          animation: fade-in-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        }
+
+        .timeline-dot {
+          animation: dot-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+        }
+
+        .event-content {
+          animation: card-slide 0.5s ease-out backwards;
+        }
+
+        .event-card:nth-child(1) { animation-delay: 0.2s; }
+        .event-card:nth-child(1) .timeline-dot { animation-delay: 0.1s; }
+        .event-card:nth-child(1) .event-content { animation-delay: 0.3s; }
+
+        .event-card:nth-child(2) { animation-delay: 0.4s; }
+        .event-card:nth-child(2) .timeline-dot { animation-delay: 0.3s; }
+        .event-card:nth-child(2) .event-content { animation-delay: 0.5s; }
+
+        .event-card:nth-child(3) { animation-delay: 0.6s; }
+        .event-card:nth-child(3) .timeline-dot { animation-delay: 0.5s; }
+        .event-card:nth-child(3) .event-content { animation-delay: 0.7s; }
+
+        .event-card:nth-child(4) { animation-delay: 0.8s; }
+        .event-card:nth-child(4) .timeline-dot { animation-delay: 0.7s; }
+        .event-card:nth-child(4) .event-content { animation-delay: 0.9s; }
+
+        .event-card:nth-child(5) { animation-delay: 1.0s; }
+        .event-card:nth-child(5) .timeline-dot { animation-delay: 0.9s; }
+        .event-card:nth-child(5) .event-content { animation-delay: 1.1s; }
+
+        .event-card:nth-child(n+6) { animation-delay: 1.2s; }
+        .event-card:nth-child(n+6) .timeline-dot { animation-delay: 1.1s; }
+        .event-card:nth-child(n+6) .event-content { animation-delay: 1.3s; }
+
+        .end-marker {
+          animation: dot-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+          animation-delay: 1.5s;
+        }
+
+        /* Hover effects */
+        .event-card:hover .timeline-dot {
+          transform: scale(1.1);
+          transition: transform 0.3s ease;
+        }
+
+        .event-card .event-content:hover {
+          transform: translateX(4px);
+          transition: transform 0.3s ease;
+        }
       `}</style>
 
       <div className="min-h-screen bg-gray-50">
@@ -124,13 +224,23 @@ export default function SpaceDetailPage() {
 
             <div className="flex items-center gap-3">
               {isOwner && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowInviteCode(!showInviteCode)}
-                >
-                  {showInviteCode ? '隐藏邀请码' : '邀请成员'}
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowInviteCode(!showInviteCode)}
+                  >
+                    {showInviteCode ? '隐藏邀请码' : '邀请成员'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    删除空间
+                  </Button>
+                </>
               )}
               <Link href={`/spaces/${spaceId}/members`}>
                 <Button variant="outline" size="sm">
@@ -197,59 +307,65 @@ export default function SpaceDetailPage() {
               </Link>
             </div>
           ) : (
-            <div className="relative max-w-3xl mx-auto">
+            <div className="relative max-w-3xl mx-auto pl-4">
               {/* Timeline line */}
-              <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-300" />
+              <div className="timeline-line absolute left-10 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 via-blue-500 to-blue-300" />
 
               {/* Events */}
-              <div className="space-y-8">
+              <div className="space-y-10">
                 {events.filter(event => event && event.id).map((event, index) => (
                   <div
                     key={event.id}
                     className="event-card relative flex gap-6"
                   >
                     {/* Timeline dot */}
-                    <div className="relative flex-shrink-0">
-                      <div className="w-12 h-12 rounded-full bg-blue-500 border-4 border-white shadow-md flex items-center justify-center">
+                    <div className="relative flex-shrink-0 w-20">
+                      <div className="timeline-dot w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border-4 border-white shadow-lg flex items-center justify-center">
                         <div className="text-center">
                           <div className="text-white text-sm font-bold leading-tight">
                             {formatDate(event.event_date, 'dd')}
                           </div>
                         </div>
                       </div>
-                      <div className="absolute top-14 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
+                      <div className="mt-2 text-center">
                         <div className="text-xs font-medium text-gray-500">
-                          {formatDate(event.event_date, 'yyyy年MM月')}
+                          {formatDate(event.event_date, 'MM月')}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {formatDate(event.event_date, 'yyyy')}
                         </div>
                       </div>
                     </div>
 
                     {/* Event card */}
                     <Link href={`/spaces/${spaceId}/events/${event.id}`} className="flex-1">
-                      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                      <div className="event-content bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300">
                         {/* Images */}
                         {event.images && event.images.length > 0 && (
                           <div className={`overflow-hidden bg-gray-100 ${
                             event.images.length === 1 ? 'aspect-[16/9]' : 'grid grid-cols-2 gap-1'
                           }`}>
-                            {event.images.slice(0, 4).map((image, idx) => (
-                              <div key={idx} className={`relative overflow-hidden ${
-                                event.images.length === 1 ? 'w-full h-full' : 'aspect-square'
-                              }`}>
-                                <img
-                                  src={image}
-                                  alt=""
-                                  className="w-full h-full object-cover"
-                                />
-                                {idx === 3 && event.images.length > 4 && (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                                    <span className="text-white text-2xl font-semibold">
-                                      +{event.images.length - 4}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                            {event.images.slice(0, 4).map((image, idx) => {
+                              const images = event.images!;
+                              return (
+                                <div key={idx} className={`relative overflow-hidden ${
+                                  images.length === 1 ? 'w-full h-full' : 'aspect-square'
+                                }`}>
+                                  <img
+                                    src={image}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                  />
+                                  {idx === 3 && images.length > 4 && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                      <span className="text-white text-2xl font-semibold">
+                                        +{images.length - 4}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -292,14 +408,14 @@ export default function SpaceDetailPage() {
               </div>
 
               {/* End marker */}
-              <div className="relative flex gap-6 mt-8">
-                <div className="flex-shrink-0">
-                  <div className="w-12 h-12 rounded-full bg-blue-500 border-4 border-white shadow-md flex items-center justify-center">
+              <div className="relative flex gap-6 mt-10">
+                <div className="flex-shrink-0 w-20">
+                  <div className="end-marker w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 border-4 border-white shadow-lg flex items-center justify-center">
                     <span className="text-xl">✨</span>
                   </div>
                 </div>
                 <div className="flex-1 flex items-center">
-                  <p className="text-sm text-gray-500 italic">
+                  <p className="text-base text-gray-400 italic font-light">
                     故事未完待续...
                   </p>
                 </div>
@@ -314,6 +430,34 @@ export default function SpaceDetailPage() {
             <p>记录每一个值得珍藏的瞬间</p>
           </div>
         </footer>
+
+        {/* Delete confirmation modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">确认删除空间</h3>
+              <p className="text-gray-600 mb-4">
+                删除空间「{currentSpace.name}」后，所有回忆和成员关系都将被删除，此操作无法撤销。
+              </p>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                >
+                  取消
+                </Button>
+                <Button
+                  onClick={handleDeleteSpace}
+                  disabled={isDeleting}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {isDeleting ? '删除中...' : '确认删除'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

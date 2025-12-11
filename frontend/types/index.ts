@@ -4,8 +4,15 @@ export interface User {
   username: string;
   email: string;
   avatar?: string;
+  avatar_url?: string;
+  default_space_id?: string | null;
+  auth_provider?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface SetDefaultSpaceRequest {
+  space_id: string;
 }
 
 export interface LoginRequest {

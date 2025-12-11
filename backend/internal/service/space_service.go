@@ -14,10 +14,14 @@ import (
 
 type SpaceService struct {
 	spaceRepo *repository.SpaceRepository
+	userRepo  *repository.UserRepository
 }
 
-func NewSpaceService(spaceRepo *repository.SpaceRepository) *SpaceService {
-	return &SpaceService{spaceRepo: spaceRepo}
+func NewSpaceService(spaceRepo *repository.SpaceRepository, userRepo *repository.UserRepository) *SpaceService {
+	return &SpaceService{
+		spaceRepo: spaceRepo,
+		userRepo:  userRepo,
+	}
 }
 
 type CreateSpaceRequest struct {
@@ -146,6 +150,11 @@ func (s *SpaceService) JoinSpace(inviteCode string, userID uuid.UUID) (*model.Sp
 		return nil, err
 	}
 
+	// 检查是否是自己创建的空间
+	if space.OwnerID == userID {
+		return nil, errors.New("不能加入自己创建的空间")
+	}
+
 	// 检查用户是否已在该空间
 	isMember, err := s.spaceRepo.IsUserInSpace(space.ID, userID)
 	if err != nil {
@@ -187,7 +196,20 @@ func (s *SpaceService) RemoveMember(spaceID, userID, targetUserID uuid.UUID) err
 		return errors.New("不能移除自己")
 	}
 
-	return s.spaceRepo.RemoveMember(spaceID, targetUserID)
+	// 移除成员
+	if err := s.spaceRepo.RemoveMember(spaceID, targetUserID); err != nil {
+		return err
+	}
+
+	// 如果被移除的用户将此空间设为默认空间，则清除其默认空间设置
+	if s.userRepo != nil {
+		targetUser, err := s.userRepo.FindByID(targetUserID)
+		if err == nil && targetUser.DefaultSpaceID != nil && *targetUser.DefaultSpaceID == spaceID {
+			_ = s.userRepo.ClearDefaultSpace(targetUserID)
+		}
+	}
+
+	return nil
 }
 
 // GetSpaceMembers 获取空间成员列表
@@ -202,4 +224,29 @@ func (s *SpaceService) GetSpaceMembers(spaceID, userID uuid.UUID) ([]model.Space
 	}
 
 	return s.spaceRepo.GetMembers(spaceID)
+}
+
+// DeleteSpace 删除空间（只有 owner 可以删除）
+func (s *SpaceService) DeleteSpace(spaceID, userID uuid.UUID) error {
+	// 获取空间
+	space, err := s.spaceRepo.FindByID(spaceID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("空间不存在")
+		}
+		return err
+	}
+
+	// 检查权限（只有 owner 可以删除空间）
+	if space.OwnerID != userID {
+		return errors.New("只有空间创建者可以删除空间")
+	}
+
+	// 清除所有将此空间设为默认空间的用户的默认空间设置
+	if s.userRepo != nil {
+		_ = s.userRepo.ClearDefaultSpaceForSpace(spaceID)
+	}
+
+	// 删除空间（会级联删除成员关系和事件）
+	return s.spaceRepo.DeleteWithRelations(spaceID)
 }

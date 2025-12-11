@@ -1,30 +1,26 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { SignUpPage } from '@/components/ui/sign-up';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { Button, Input } from '@/components/ui';
+import { spaceApi } from '@/lib/api';
 import { getErrorMessage } from '@/lib/utils';
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, isLoading } = useAuthStore();
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
+  const { register, googleLogin, isLoading, isAuthenticated } = useAuthStore();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const googleInitialized = useRef(false);
 
   // 常用邮箱域名白名单
   const allowedEmailDomains = [
-    // 国内邮箱
     'qq.com', '163.com', '126.com', 'sina.com', 'sina.cn',
     'sohu.com', 'yeah.net', '139.com', 'wo.cn', '189.cn',
     'aliyun.com', 'foxmail.com',
-    // 国际邮箱
     'gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com',
     'icloud.com', 'live.com', 'msn.com', 'aol.com',
     'protonmail.com', 'zoho.com'
@@ -37,158 +33,185 @@ export default function RegisterPage() {
     return allowedEmailDomains.includes(domain);
   };
 
-  const validateForm = (): boolean => {
+  // 登录/注册成功后的跳转逻辑
+  const handleAuthSuccess = useCallback(async () => {
+    const { fetchUser, clearDefaultSpace } = useAuthStore.getState();
+    await fetchUser();
+    const currentUser = useAuthStore.getState().user;
+
+    if (currentUser?.default_space_id) {
+      try {
+        await spaceApi.getById(currentUser.default_space_id);
+        router.push(`/spaces/${currentUser.default_space_id}`);
+      } catch {
+        await clearDefaultSpace();
+        router.push('/spaces');
+      }
+    } else {
+      router.push('/spaces');
+    }
+  }, [router]);
+
+  // Google 登录回调
+  const handleGoogleCredentialResponse = useCallback(async (response: google.accounts.id.CredentialResponse) => {
+    setErrors({});
+    setIsGoogleLoading(true);
+
+    try {
+      await googleLogin(response.credential);
+      await handleAuthSuccess();
+    } catch (err) {
+      setErrors({ submit: getErrorMessage(err) });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  }, [googleLogin, handleAuthSuccess]);
+
+  // 初始化 Google Sign-In
+  useEffect(() => {
+    if (isAuthenticated) {
+      handleAuthSuccess();
+      return;
+    }
+
+    if (!GOOGLE_CLIENT_ID) {
+      return;
+    }
+
+    if (googleInitialized.current) {
+      return;
+    }
+
+    const initializeGoogle = () => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        googleInitialized.current = true;
+      }
+    };
+
+    if (window.google?.accounts?.id) {
+      initializeGoogle();
+    } else {
+      const checkGoogle = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          clearInterval(checkGoogle);
+          initializeGoogle();
+        }
+      }, 100);
+
+      setTimeout(() => clearInterval(checkGoogle), 5000);
+    }
+  }, [isAuthenticated, handleGoogleCredentialResponse, handleAuthSuccess]);
+
+  const handleSignUp = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrors({});
+
+    const formData = new FormData(event.currentTarget);
+    const username = formData.get('username') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const confirmPassword = formData.get('confirmPassword') as string;
+
     const newErrors: Record<string, string> = {};
 
-    // 用户名验证
-    if (!formData.username.trim()) {
+    // 验证用户名
+    if (!username?.trim()) {
       newErrors.username = '请输入用户名';
-    } else if (formData.username.length < 3) {
+    } else if (username.length < 3) {
       newErrors.username = '用户名至少 3 位';
-    } else if (formData.username.length > 50) {
+    } else if (username.length > 50) {
       newErrors.username = '用户名最多 50 位';
     }
 
-    // 邮箱验证
-    if (!formData.email.trim()) {
+    // 验证邮箱
+    if (!email?.trim()) {
       newErrors.email = '请输入邮箱';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.email = '邮箱格式不正确';
-    } else if (!isAllowedEmailDomain(formData.email)) {
-      newErrors.email = '请使用常用邮箱注册(如 QQ、163、Gmail 等)';
+    } else if (!isAllowedEmailDomain(email)) {
+      newErrors.email = '请使用常用邮箱注册';
     }
 
-    // 密码验证
-    if (!formData.password) {
+    // 验证密码
+    if (!password) {
       newErrors.password = '请输入密码';
-    } else if (formData.password.length < 8) {
+    } else if (password.length < 8) {
       newErrors.password = '密码至少 8 位';
-    } else if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(formData.password)) {
+    } else if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(password)) {
       newErrors.password = '密码必须包含字母和数字';
     }
 
-    // 确认密码验证
-    if (!formData.confirmPassword) {
+    // 验证确认密码
+    if (!confirmPassword) {
       newErrors.confirmPassword = '请确认密码';
-    } else if (formData.password !== formData.confirmPassword) {
+    } else if (password !== confirmPassword) {
       newErrors.confirmPassword = '两次密码输入不一致';
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     try {
-      await register({
-        username: formData.username,
-        email: formData.email,
-        password: formData.password,
-      });
+      await register({ username, email, password });
       router.push('/spaces');
-    } catch (error) {
-      setErrors({ submit: getErrorMessage(error) });
+    } catch (err) {
+      setErrors({ submit: getErrorMessage(err) });
     }
   };
 
+  const handleGoogleSignUp = () => {
+    setErrors({});
+
+    if (!GOOGLE_CLIENT_ID) {
+      setErrors({ submit: 'Google 登录未配置，请联系管理员' });
+      return;
+    }
+
+    if (!window.google?.accounts?.id) {
+      setErrors({ submit: 'Google 登录服务加载中，请稍后重试' });
+      return;
+    }
+
+    window.google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed()) {
+        const reason = notification.getNotDisplayedReason();
+        if (reason === 'opt_out_or_no_session') {
+          setErrors({ submit: '请先登录您的 Google 账号，或允许弹出窗口' });
+        } else if (reason === 'suppressed_by_user') {
+          setErrors({ submit: 'Google 登录已被禁用，请在浏览器设置中启用' });
+        } else {
+          setErrors({ submit: '无法显示 Google 登录，请检查浏览器设置或稍后重试' });
+        }
+      }
+    });
+  };
+
+  const handleSignIn = () => {
+    router.push('/login');
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 py-8">
-      <div className="max-w-md w-full">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">LineTime</h1>
-          <p className="text-gray-600">创建您的账号</p>
-        </div>
-
-        {/* 注册表单 */}
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* 全局错误提示 */}
-            {errors.submit && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {errors.submit}
-              </div>
-            )}
-
-            {/* 用户名 */}
-            <Input
-              label="用户名"
-              type="text"
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              error={errors.username}
-              placeholder="3-50 个字符"
-              disabled={isLoading}
-            />
-
-            {/* 邮箱 */}
-            <Input
-              label="邮箱"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              error={errors.email}
-              placeholder="请使用常用邮箱 (QQ、163、Gmail等)"
-              disabled={isLoading}
-            />
-
-            {/* 密码 */}
-            <Input
-              label="密码"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              error={errors.password}
-              placeholder="至少 8 位，包含字母和数字"
-              disabled={isLoading}
-            />
-
-            {/* 确认密码 */}
-            <Input
-              label="确认密码"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              error={errors.confirmPassword}
-              placeholder="再次输入密码"
-              disabled={isLoading}
-            />
-
-            {/* 注册按钮 */}
-            <Button
-              type="submit"
-              className="w-full"
-              isLoading={isLoading}
-              disabled={isLoading}
-            >
-              注册
-            </Button>
-          </form>
-
-          {/* 登录链接 */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              已有账号？{' '}
-              <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-                立即登录
-              </Link>
-            </p>
-          </div>
-        </div>
-
-        {/* 返回首页 */}
-        <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">
-            ← 返回首页
-          </Link>
-        </div>
-      </div>
-    </div>
+    <SignUpPage
+      title={
+        <span className="font-semibold text-foreground tracking-tight">
+          创建账号
+        </span>
+      }
+      description="加入 LineTime，与亲朋好友一起记录美好时光"
+      heroImageSrc="https://images.unsplash.com/photo-1462275646964-a0e3571f4f7f?w=1920&q=80"
+      onSignUp={handleSignUp}
+      onGoogleSignUp={handleGoogleSignUp}
+      onSignIn={handleSignIn}
+      isLoading={isLoading || isGoogleLoading}
+      errors={errors}
+    />
   );
 }

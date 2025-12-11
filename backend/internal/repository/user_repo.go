@@ -43,3 +43,38 @@ func (r *UserRepository) Update(user *model.User) error {
 func (r *UserRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&model.User{}, id).Error
 }
+
+// UpdateDefaultSpace sets the default space for a user
+func (r *UserRepository) UpdateDefaultSpace(userID, spaceID uuid.UUID) error {
+	return r.db.Model(&model.User{}).Where("id = ?", userID).Update("default_space_id", spaceID).Error
+}
+
+// ClearDefaultSpace removes the default space setting for a user
+func (r *UserRepository) ClearDefaultSpace(userID uuid.UUID) error {
+	return r.db.Model(&model.User{}).Where("id = ?", userID).Update("default_space_id", nil).Error
+}
+
+// ClearDefaultSpaceForSpace clears default_space_id for all users who have the given space as default
+func (r *UserRepository) ClearDefaultSpaceForSpace(spaceID uuid.UUID) error {
+	return r.db.Model(&model.User{}).Where("default_space_id = ?", spaceID).Update("default_space_id", nil).Error
+}
+
+// FindByGoogleID finds a user by their Google ID
+func (r *UserRepository) FindByGoogleID(googleID string) (*model.User, error) {
+	var user model.User
+	err := r.db.Where("google_id = ?", googleID).First(&user).Error
+	return &user, err
+}
+
+// UpdateGoogleID links a Google account to an existing user
+func (r *UserRepository) UpdateGoogleID(userID uuid.UUID, googleID string) error {
+	return r.db.Model(&model.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
+		"google_id":     googleID,
+		"auth_provider": "google",
+	}).Error
+}
+
+// UpdatePassword updates the password hash for a user
+func (r *UserRepository) UpdatePassword(userID uuid.UUID, passwordHash string) error {
+	return r.db.Model(&model.User{}).Where("id = ?", userID).Update("password_hash", passwordHash).Error
+}

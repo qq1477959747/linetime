@@ -66,6 +66,9 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     try {
       const response = await spaceApi.join(code);
       const newSpace = response.data;
+      if (!newSpace || !newSpace.id) {
+        throw new Error('加入空间失败，请稍后重试');
+      }
       set((state) => ({
         spaces: [...state.spaces, newSpace],
         isLoading: false,

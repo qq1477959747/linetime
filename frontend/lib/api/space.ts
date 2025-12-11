@@ -36,4 +36,9 @@ export const spaceApi = {
   removeMember: (spaceId: string, userId: string) => {
     return apiClient.delete(`/spaces/${spaceId}/members/${userId}`);
   },
+
+  // 删除空间
+  delete: (id: string) => {
+    return apiClient.delete(`/spaces/${id}`);
+  },
 };

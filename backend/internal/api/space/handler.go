@@ -200,3 +200,25 @@ func (h *Handler) GetSpaceMembers(c *gin.Context) {
 
 	response.Success(c, memberResponses)
 }
+
+// DeleteSpace 删除空间
+func (h *Handler) DeleteSpace(c *gin.Context) {
+	userID, ok := middleware.GetCurrentUserID(c)
+	if !ok {
+		response.Unauthorized(c, "未授权")
+		return
+	}
+
+	spaceID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "无效的空间ID")
+		return
+	}
+
+	if err := h.spaceService.DeleteSpace(spaceID, userID); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "空间删除成功", nil)
+}

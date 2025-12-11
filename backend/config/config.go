@@ -11,12 +11,14 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	MinIO    MinIOConfig
-	JWT      JWTConfig
-	Upload   UploadConfig
+	Server      ServerConfig
+	Database    DatabaseConfig
+	Redis       RedisConfig
+	MinIO       MinIOConfig
+	JWT         JWTConfig
+	Upload      UploadConfig
+	GoogleOAuth GoogleOAuthConfig
+	SMTP        SMTPConfig
 }
 
 type ServerConfig struct {
@@ -57,6 +59,19 @@ type UploadConfig struct {
 	MaxFileSize       int64
 	MaxFilesPerUpload int
 	AllowedFileTypes  string
+}
+
+type GoogleOAuthConfig struct {
+	ClientID     string
+	ClientSecret string
+}
+
+type SMTPConfig struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	From     string
 }
 
 var AppConfig *Config
@@ -101,6 +116,17 @@ func Load() {
 			MaxFileSize:       mustGetEnvAsInt64("MAX_FILE_SIZE"),
 			MaxFilesPerUpload: mustGetEnvAsInt("MAX_FILES_PER_UPLOAD"),
 			AllowedFileTypes:  mustGetEnv("ALLOWED_FILE_TYPES"),
+		},
+		GoogleOAuth: GoogleOAuthConfig{
+			ClientID:     getEnv("GOOGLE_CLIENT_ID"),
+			ClientSecret: getEnv("GOOGLE_CLIENT_SECRET"),
+		},
+		SMTP: SMTPConfig{
+			Host:     getEnv("SMTP_HOST"),
+			Port:     getEnvAsInt("SMTP_PORT", 587),
+			Username: getEnv("SMTP_USERNAME"),
+			Password: getEnv("SMTP_PASSWORD"),
+			From:     getEnv("SMTP_FROM"),
 		},
 	}
 }
@@ -150,6 +176,18 @@ func mustParseDuration(s string) time.Duration {
 		log.Fatalf("解析时间失败: %v", err)
 	}
 	return duration
+}
+
+func getEnvAsInt(key string, defaultVal int) int {
+	valueStr := os.Getenv(key)
+	if valueStr == "" {
+		return defaultVal
+	}
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		return defaultVal
+	}
+	return value
 }
 
 func Validate() error {

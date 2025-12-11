@@ -1,123 +1,166 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { SignInPage } from '@/components/ui/sign-in';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { Button, Input } from '@/components/ui';
+import { spaceApi } from '@/lib/api';
 import { getErrorMessage } from '@/lib/utils';
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isLoading } = useAuthStore();
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { login, googleLogin, isLoading, isAuthenticated } = useAuthStore();
+  const [error, setError] = useState<string>('');
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const googleInitialized = useRef(false);
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  // 登录成功后的跳转逻辑
+  const handleLoginSuccess = useCallback(async () => {
+    const { fetchUser, clearDefaultSpace } = useAuthStore.getState();
+    await fetchUser();
+    const currentUser = useAuthStore.getState().user;
 
-    if (!formData.username.trim()) {
-      newErrors.username = '请输入用户名';
+    if (currentUser?.default_space_id) {
+      try {
+        await spaceApi.getById(currentUser.default_space_id);
+        router.push(`/spaces/${currentUser.default_space_id}`);
+      } catch {
+        await clearDefaultSpace();
+        router.push('/spaces');
+      }
+    } else {
+      router.push('/spaces');
+    }
+  }, [router]);
+
+  // Google 登录回调
+  const handleGoogleCredentialResponse = useCallback(async (response: google.accounts.id.CredentialResponse) => {
+    setError('');
+    setIsGoogleLoading(true);
+
+    try {
+      await googleLogin(response.credential);
+      await handleLoginSuccess();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  }, [googleLogin, handleLoginSuccess]);
+
+  // 初始化 Google Sign-In
+  useEffect(() => {
+    if (isAuthenticated) {
+      handleLoginSuccess();
+      return;
     }
 
-    if (!formData.password) {
-      newErrors.password = '请输入密码';
-    } else if (formData.password.length < 8) {
-      newErrors.password = '密码至少 8 位';
+    if (!GOOGLE_CLIENT_ID) {
+      console.warn('Google Client ID not configured');
+      return;
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    if (googleInitialized.current) {
+      return;
+    }
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+    const initializeGoogle = () => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        googleInitialized.current = true;
+      }
+    };
 
-    if (!validateForm()) {
+    // 如果 Google 脚本已加载，直接初始化
+    if (window.google?.accounts?.id) {
+      initializeGoogle();
+    } else {
+      // 等待脚本加载
+      const checkGoogle = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          clearInterval(checkGoogle);
+          initializeGoogle();
+        }
+      }, 100);
+
+      // 5秒后停止检查
+      setTimeout(() => clearInterval(checkGoogle), 5000);
+    }
+  }, [isAuthenticated, handleGoogleCredentialResponse, handleLoginSuccess]);
+
+  const handleSignIn = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+
+    const formData = new FormData(event.currentTarget);
+    const username = formData.get('username') as string;
+    const password = formData.get('password') as string;
+    const rememberMe = formData.get('rememberMe') === 'on';
+
+    if (!username?.trim()) {
+      setError('请输入用户名');
+      return;
+    }
+    if (!password || password.length < 8) {
+      setError('密码至少 8 位');
       return;
     }
 
     try {
-      await login(formData);
-      router.push('/spaces');
-    } catch (error) {
-      setErrors({ submit: getErrorMessage(error) });
+      await login({ username, password }, rememberMe);
+      await handleLoginSuccess();
+    } catch (err) {
+      setError(getErrorMessage(err));
     }
   };
 
+  const handleGoogleSignIn = () => {
+    setError('');
+
+    if (!GOOGLE_CLIENT_ID) {
+      setError('Google 登录未配置，请联系管理员');
+      return;
+    }
+
+    if (!window.google?.accounts?.id) {
+      setError('Google 登录服务加载中，请稍后重试');
+      return;
+    }
+
+    // 使用 Google One Tap
+    window.google.accounts.id.prompt();
+  };
+
+  const handleResetPassword = () => {
+    router.push('/forgot-password');
+  };
+
+  const handleCreateAccount = () => {
+    router.push('/register');
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">LineTime</h1>
-          <p className="text-gray-600">登录您的账号</p>
-        </div>
-
-        {/* 登录表单 */}
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 全局错误提示 */}
-            {errors.submit && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {errors.submit}
-              </div>
-            )}
-
-            {/* 用户名 */}
-            <Input
-              label="用户名"
-              type="text"
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              error={errors.username}
-              placeholder="请输入用户名"
-              disabled={isLoading}
-            />
-
-            {/* 密码 */}
-            <Input
-              label="密码"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              error={errors.password}
-              placeholder="请输入密码"
-              disabled={isLoading}
-            />
-
-            {/* 登录按钮 */}
-            <Button
-              type="submit"
-              className="w-full"
-              isLoading={isLoading}
-              disabled={isLoading}
-            >
-              登录
-            </Button>
-          </form>
-
-          {/* 注册链接 */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              还没有账号？{' '}
-              <Link href="/register" className="text-blue-600 hover:text-blue-700 font-medium">
-                立即注册
-              </Link>
-            </p>
-          </div>
-        </div>
-
-        {/* 返回首页 */}
-        <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">
-            ← 返回首页
-          </Link>
-        </div>
-      </div>
-    </div>
+    <SignInPage
+      title={
+        <span className="font-semibold text-foreground tracking-tight">
+          欢迎回来
+        </span>
+      }
+      description="登录您的账号，继续记录美好时光"
+      heroImageSrc="https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=1920&q=80"
+      onSignIn={handleSignIn}
+      onGoogleSignIn={handleGoogleSignIn}
+      onResetPassword={handleResetPassword}
+      onCreateAccount={handleCreateAccount}
+      isLoading={isLoading || isGoogleLoading}
+      error={error}
+    />
   );
 }

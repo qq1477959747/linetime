@@ -42,32 +42,55 @@ class ApiClient {
         if (error.response?.status === 401) {
           // Token 过期或无效，清除本地存储并跳转登录
           this.clearToken();
-          if (typeof window !== 'undefined') {
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
             window.location.href = '/login';
           }
         }
-        return Promise.reject(error);
+        // 提取后端返回的错误信息
+        const errorMessage = error.response?.data?.message || error.message || '请求失败';
+        const customError = new Error(errorMessage);
+        return Promise.reject(customError);
       }
     );
   }
 
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('access_token');
+    // 优先从 localStorage 获取（记住我），其次从 sessionStorage 获取
+    return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
   }
 
   private clearToken() {
     if (typeof window === 'undefined') return;
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('remember_me');
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('refresh_token');
   }
 
-  public setToken(accessToken: string, refreshToken?: string) {
+  public setToken(accessToken: string, refreshToken?: string, rememberMe: boolean = true) {
     if (typeof window === 'undefined') return;
-    localStorage.setItem('access_token', accessToken);
-    if (refreshToken) {
-      localStorage.setItem('refresh_token', refreshToken);
+    
+    // 根据"记住我"选项决定存储位置
+    const storage = rememberMe ? localStorage : sessionStorage;
+    
+    // 清除另一个存储中的 token
+    if (rememberMe) {
+      sessionStorage.removeItem('access_token');
+      sessionStorage.removeItem('refresh_token');
+    } else {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
     }
+    
+    storage.setItem('access_token', accessToken);
+    if (refreshToken) {
+      storage.setItem('refresh_token', refreshToken);
+    }
+    
+    // 保存记住我状态
+    localStorage.setItem('remember_me', rememberMe ? 'true' : 'false');
   }
 
   public get<T = any>(url: string, config?: any): Promise<ApiResponse<T>> {

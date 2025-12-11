@@ -22,19 +22,22 @@ export default function JoinSpacePage() {
   }, []);
 
   useEffect(() => {
-    if (mounted && !authLoading) {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    if (!mounted) return;
+    
+    const token = typeof window !== 'undefined' 
+      ? (localStorage.getItem('access_token') || sessionStorage.getItem('access_token')) 
+      : null;
 
-      if (!token) {
-        router.push('/login');
-        return;
-      }
+    if (!token) {
+      router.push('/login');
+      return;
+    }
 
-      if (!isAuthenticated) {
-        fetchUser().catch(() => {
-          router.push('/login');
-        });
-      }
+    // 只有在没有认证且不在加载中时才获取用户信息
+    if (!isAuthenticated && !authLoading) {
+      fetchUser().catch(() => {
+        // fetchUser 失败时，apiClient 已经处理了 401 跳转
+      });
     }
   }, [mounted, authLoading, isAuthenticated, fetchUser, router]);
 

@@ -77,3 +77,25 @@ func (r *SpaceRepository) IsUserInSpace(spaceID, userID uuid.UUID) (bool, error)
 		Count(&count).Error
 	return count > 0, err
 }
+
+// DeleteWithRelations 删除空间及其所有关联数据（成员、事件）
+func (r *SpaceRepository) DeleteWithRelations(spaceID uuid.UUID) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// 删除空间成员
+		if err := tx.Where("space_id = ?", spaceID).Delete(&model.SpaceMember{}).Error; err != nil {
+			return err
+		}
+
+		// 删除空间事件
+		if err := tx.Where("space_id = ?", spaceID).Delete(&model.Event{}).Error; err != nil {
+			return err
+		}
+
+		// 删除空间
+		if err := tx.Delete(&model.Space{}, spaceID).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}

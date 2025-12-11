@@ -18,7 +18,21 @@
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZWU1YmQ1MDMtYTk4OC00NTkyLWE0YTgtODdhOGM2YTM2MDhmIiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsImV4cCI6MTc2NTMzNjM1OSwiaWF0IjoxNzY1MzI5MTU5fQ.1Oz6Ova1Niq5nkMJfAOWFL2DNZbxHTs10Hr0UnaUvT0\")",
       "Bash(taskkill:*)",
       "Bash(netstat:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(go get:*)",
+      "Bash(go build:*)",
+      "Bash(npx create-next-app:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(git rm:*)",
+      "Bash(git restore:*)",
+      "Bash(PGPASSWORD='Qq1477959747!' psql -h 106.13.230.26 -U postgres -d linetime -c \"ALTER TABLE events DROP COLUMN IF EXISTS tags;\")",
+      "Bash(PGPASSWORD='Qq1477959747!' psql:*)",
+      "Bash(PGPASSWORD='Qq1477959747!' psql -h 106.13.230.26 -U postgres -d linetime -c \"ALTER TABLE events ADD COLUMN IF NOT EXISTS tags jsonb;\")",
+      "Bash(PGPASSWORD='Qq1477959747!' psql -h 106.13.230.26 -U postgres -d linetime -c \"ALTER TABLE events ADD COLUMN IF NOT EXISTS images jsonb;\")",
+      "Bash(cmd //c \"taskkill /F /PID 24172\")",
+      "Bash(cmd //c \"taskkill /F /PID 13828\")",
+      "Bash(cmd //c \"taskkill /F /PID 29116\")"
     ],
     "deny": [],
     "ask": []

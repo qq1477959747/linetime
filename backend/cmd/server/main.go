@@ -7,6 +7,7 @@ import (
 	"github.com/qq1477959747/linetime/backend/config"
 	"github.com/qq1477959747/linetime/backend/internal/api"
 	"github.com/qq1477959747/linetime/backend/internal/database"
+	"github.com/qq1477959747/linetime/backend/internal/storage"
 )
 
 func main() {
@@ -19,6 +20,12 @@ func main() {
 		log.Fatalf("数据库初始化失败: %v", err)
 	}
 	log.Println("数据库初始化完成")
+
+	// 初始化 Redis
+	if err := storage.InitRedis(); err != nil {
+		log.Fatalf("Redis 初始化失败: %v", err)
+	}
+	log.Println("Redis 初始化完成")
 
 	// 设置路由
 	router := api.SetupRouter(database.GetDB())
