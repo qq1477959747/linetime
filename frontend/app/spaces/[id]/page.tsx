@@ -8,6 +8,7 @@ import { useEventStore } from '@/stores/useEventStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Button, Loading } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
+import { MeteorTimeline } from '@/components/MeteorTimeline';
 
 export default function SpaceDetailPage() {
   const params = useParams();
@@ -19,6 +20,7 @@ export default function SpaceDetailPage() {
   const { events, fetchEvents, isLoading: eventsLoading } = useEventStore();
   const [showInviteCode, setShowInviteCode] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'meteor'>('meteor'); // 默认使用流星视图
 
   useEffect(() => {
     setMounted(true);
@@ -204,25 +206,59 @@ export default function SpaceDetailPage() {
         }
       `}</style>
 
-      <div className="min-h-screen bg-gray-50">
+      <div className={`min-h-screen ${viewMode === 'meteor' ? '' : 'bg-gray-50'}`}>
         {/* Header */}
-        <header className="sticky top-0 z-50 backdrop-blur-md border-b border-gray-200 bg-white/90">
+        <header className={`sticky top-0 z-50 backdrop-blur-md border-b ${
+          viewMode === 'meteor'
+            ? 'border-cyan-500/30 bg-slate-950/90'
+            : 'border-gray-200 bg-white/90'
+        }`}>
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
             <Link href="/spaces" className="flex items-center gap-3 group">
               <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center hover:bg-blue-600 transition-colors">
                 <span className="text-white text-xl">←</span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className={`text-2xl font-bold ${
+                  viewMode === 'meteor' ? 'text-white' : 'text-gray-900'
+                }`}>
                   {currentSpace.name}
                 </h1>
-                <p className="text-sm text-gray-600">
+                <p className={`text-sm ${
+                  viewMode === 'meteor' ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   共 {events.length} 个回忆
                 </p>
               </div>
             </Link>
 
             <div className="flex items-center gap-3">
+              {/* 视图切换按钮 */}
+              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('meteor')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    viewMode === 'meteor'
+                      ? 'bg-white text-cyan-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  title="流星视图"
+                >
+                  ☄️
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    viewMode === 'list'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  title="列表视图"
+                >
+                  📋
+                </button>
+              </div>
+
               {isOwner && (
                 <>
                   <Button
@@ -276,9 +312,9 @@ export default function SpaceDetailPage() {
         </header>
 
         {/* Main content */}
-        <main className="max-w-6xl mx-auto px-6 py-12">
-          {/* Space description */}
-          {currentSpace.description && (
+        <main className={viewMode === 'meteor' ? '' : 'max-w-6xl mx-auto px-6 py-12'}>
+          {/* Space description - 只在列表视图中显示 */}
+          {viewMode === 'list' && currentSpace.description && (
             <div className="mb-12 text-center max-w-2xl mx-auto">
               <p className="text-lg leading-relaxed text-gray-600">
                 {currentSpace.description}
@@ -306,7 +342,11 @@ export default function SpaceDetailPage() {
                 </Button>
               </Link>
             </div>
+          ) : viewMode === 'meteor' ? (
+            /* 流星视图 */
+            <MeteorTimeline events={events} spaceId={spaceId} />
           ) : (
+            /* 列表视图 - 传统时间线 */
             <div className="relative max-w-3xl mx-auto pl-4">
               {/* Timeline line */}
               <div className="timeline-line absolute left-10 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 via-blue-500 to-blue-300" />
@@ -424,12 +464,14 @@ export default function SpaceDetailPage() {
           )}
         </main>
 
-        {/* Footer */}
-        <footer className="border-t border-gray-200 py-8 mt-20">
-          <div className="max-w-6xl mx-auto px-6 text-center text-sm text-gray-500">
-            <p>记录每一个值得珍藏的瞬间</p>
-          </div>
-        </footer>
+        {/* Footer - 只在列表视图中显示 */}
+        {viewMode === 'list' && (
+          <footer className="border-t border-gray-200 py-8 mt-20">
+            <div className="max-w-6xl mx-auto px-6 text-center text-sm text-gray-500">
+              <p>记录每一个值得珍藏的瞬间</p>
+            </div>
+          </footer>
+        )}
 
         {/* Delete confirmation modal */}
         {showDeleteConfirm && (
