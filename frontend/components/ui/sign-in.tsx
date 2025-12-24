@@ -61,11 +61,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginMode, setLoginMode] = useState<LoginMode>('password');
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [rememberMe, setRememberMe] = useState(false);
   const [localError, setLocalError] = useState('');
   const [isSendingCode, setIsSendingCode] = useState(false);
 
@@ -78,11 +75,14 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   }, [countdown]);
 
   const handleSendCode = async () => {
-    if (!email?.trim()) {
+    const emailInput = document.querySelector('input[name="loginEmail"]') as HTMLInputElement;
+    const emailValue = emailInput?.value?.trim();
+    
+    if (!emailValue) {
       setLocalError('请输入邮箱');
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
       setLocalError('邮箱格式不正确');
       return;
     }
@@ -90,7 +90,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     setLocalError('');
     setIsSendingCode(true);
     try {
-      await onSendCode?.(email);
+      await onSendCode?.(emailValue);
       setCodeSent(true);
       setCountdown(60);
     } catch (err: any) {
@@ -100,20 +100,25 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     }
   };
 
-  const handleCodeLogin = async (e: React.FormEvent) => {
+  const handleCodeLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!email?.trim()) {
+    const formData = new FormData(e.currentTarget);
+    const emailValue = (formData.get('loginEmail') as string)?.trim();
+    const codeValue = (formData.get('loginCode') as string)?.trim();
+    const rememberMe = formData.get('codeRememberMe') === 'on';
+
+    if (!emailValue) {
       setLocalError('请输入邮箱');
       return;
     }
-    if (!code || code.length !== 6) {
+    if (!codeValue || codeValue.length !== 6) {
       setLocalError('请输入6位验证码');
       return;
     }
 
     setLocalError('');
     try {
-      await onCodeLogin?.(email, code, rememberMe);
+      await onCodeLogin?.(emailValue, codeValue, rememberMe);
     } catch (err: any) {
       setLocalError(err?.message || '登录失败');
     }
@@ -258,9 +263,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   <label className="text-sm font-medium text-muted-foreground">邮箱</label>
                   <GlassInputWrapper>
                     <input
+                      name="loginEmail"
                       type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
                       placeholder="请输入注册邮箱"
                       disabled={isLoading || isSendingCode}
                       className="w-full bg-transparent text-sm p-4 rounded-2xl focus:outline-none disabled:opacity-50"
@@ -273,9 +277,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   <div className="flex gap-3">
                     <GlassInputWrapper>
                       <input
+                        name="loginCode"
                         type="text"
-                        value={code}
-                        onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="6位验证码"
                         maxLength={6}
                         disabled={isLoading}
@@ -296,9 +299,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                 <div className="animate-element animate-delay-500 flex items-center text-sm">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
+                      name="codeRememberMe"
                       type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
                       className="w-4 h-4 rounded"
                     />
                     <span className="text-foreground/90">记住我</span>
