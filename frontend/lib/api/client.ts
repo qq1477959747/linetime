@@ -36,6 +36,12 @@ class ApiClient {
     // 响应拦截器
     this.client.interceptors.response.use(
       (response) => {
+        // 检查业务层面的错误（HTTP 200 但 code 不是 200）
+        const data = response.data as ApiResponse;
+        if (data.code && data.code !== 200) {
+          const error = new Error(data.message || '请求失败');
+          return Promise.reject(error);
+        }
         return response.data;
       },
       async (error: AxiosError<ApiResponse>) => {
@@ -46,10 +52,31 @@ class ApiClient {
             window.location.href = '/login';
           }
         }
-        // 提取后端返回的错误信息
-        const errorMessage = error.response?.data?.message || error.message || '请求失败';
-        const customError = new Error(errorMessage);
-        return Promise.reject(customError);
+        
+        // 优先使用后端返回的业务错误信息
+        const responseData = error.response?.data;
+        if (responseData?.message) {
+          return Promise.reject(new Error(responseData.message));
+        }
+        
+        // 网络层面的错误
+        let errorMessage = '请求失败，请稍后重试';
+        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+          errorMessage = '请求超时，请检查网络后重试';
+        } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network')) {
+          errorMessage = '网络连接失败，请检查网络后重试';
+        } else if (error.response?.status) {
+          const statusMessages: Record<number, string> = {
+            403: '没有权限执行此操作',
+            404: '请求的资源不存在',
+            500: '服务器内部错误，请稍后重试',
+            502: '服务暂时不可用，请稍后重试',
+            503: '服务维护中，请稍后重试',
+          };
+          errorMessage = statusMessages[error.response.status] || errorMessage;
+        }
+        
+        return Promise.reject(new Error(errorMessage));
       }
     );
   }

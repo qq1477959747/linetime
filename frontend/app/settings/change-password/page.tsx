@@ -5,11 +5,9 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, KeyRound, Check, Eye, EyeOff } from 'lucide-react';
 import { authApi } from '@/lib/api/auth';
 import { getErrorMessage } from '@/lib/utils';
-import { useAuthStore } from '@/stores/useAuthStore';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -18,10 +16,6 @@ export default function ChangePasswordPage() {
   const [success, setSuccess] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-
-  // Check if user is Google-only (no password set)
-  // Note: We check auth_provider only since password_hash is not exposed to frontend
-  const isGoogleOnly = user?.auth_provider === 'google';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,11 +42,7 @@ export default function ChangePasswordPage() {
     setIsLoading(true);
 
     try {
-      if (isGoogleOnly) {
-        await authApi.setInitialPassword(newPassword);
-      } else {
-        await authApi.changePassword(currentPassword, newPassword);
-      }
+      await authApi.changePassword(currentPassword, newPassword);
       setSuccess(true);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -68,14 +58,8 @@ export default function ChangePasswordPage() {
           <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
             <Check className="w-8 h-8 text-green-600" />
           </div>
-          <h1 className="text-2xl font-semibold">
-            {isGoogleOnly ? '密码设置成功' : '密码修改成功'}
-          </h1>
-          <p className="text-muted-foreground">
-            {isGoogleOnly
-              ? '您已成功设置密码，现在可以使用邮箱和密码登录'
-              : '您的密码已成功修改'}
-          </p>
+          <h1 className="text-2xl font-semibold">密码修改成功</h1>
+          <p className="text-muted-foreground">您的密码已成功修改</p>
           <button
             onClick={() => router.back()}
             className="w-full py-4 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl font-medium transition-colors"
@@ -103,14 +87,8 @@ export default function ChangePasswordPage() {
             <div className="w-16 h-16 bg-violet-100 dark:bg-violet-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
               <KeyRound className="w-8 h-8 text-violet-600" />
             </div>
-            <h1 className="text-2xl font-semibold">
-              {isGoogleOnly ? '设置密码' : '修改密码'}
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              {isGoogleOnly
-                ? '设置密码后，您可以使用邮箱和密码登录'
-                : '请输入当前密码和新密码'}
-            </p>
+            <h1 className="text-2xl font-semibold">修改密码</h1>
+            <p className="text-muted-foreground mt-2">请输入当前密码和新密码</p>
           </div>
 
           {error && (
@@ -120,29 +98,27 @@ export default function ChangePasswordPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isGoogleOnly && (
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">当前密码</label>
-                <div className="relative mt-1">
-                  <input
-                    type={showCurrentPassword ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="请输入当前密码"
-                    required
-                    disabled={isLoading}
-                    className="w-full p-4 pr-12 rounded-2xl border border-border bg-foreground/5 focus:border-violet-400 focus:outline-none disabled:opacity-50"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">当前密码</label>
+              <div className="relative mt-1">
+                <input
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="请输入当前密码"
+                  required
+                  disabled={isLoading}
+                  className="w-full p-4 pr-12 rounded-2xl border border-border bg-foreground/5 focus:border-violet-400 focus:outline-none disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
-            )}
+            </div>
 
             <div>
               <label className="text-sm font-medium text-muted-foreground">新密码</label>
@@ -183,10 +159,10 @@ export default function ChangePasswordPage() {
 
             <button
               type="submit"
-              disabled={isLoading || !newPassword || !confirmPassword || (!isGoogleOnly && !currentPassword)}
+              disabled={isLoading || !newPassword || !confirmPassword || !currentPassword}
               className="w-full py-4 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl font-medium transition-colors disabled:opacity-50"
             >
-              {isLoading ? '提交中...' : isGoogleOnly ? '设置密码' : '修改密码'}
+              {isLoading ? '提交中...' : '修改密码'}
             </button>
           </form>
         </div>

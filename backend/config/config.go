@@ -11,14 +11,13 @@ import (
 )
 
 type Config struct {
-	Server      ServerConfig
-	Database    DatabaseConfig
-	Redis       RedisConfig
-	MinIO       MinIOConfig
-	JWT         JWTConfig
-	Upload      UploadConfig
-	GoogleOAuth GoogleOAuthConfig
-	SMTP        SMTPConfig
+	Server   ServerConfig
+	Database DatabaseConfig
+	Redis    RedisConfig
+	MinIO    MinIOConfig
+	JWT      JWTConfig
+	Upload   UploadConfig
+	SMTP     SMTPConfig
 }
 
 type ServerConfig struct {
@@ -59,11 +58,6 @@ type UploadConfig struct {
 	MaxFileSize       int64
 	MaxFilesPerUpload int
 	AllowedFileTypes  string
-}
-
-type GoogleOAuthConfig struct {
-	ClientID     string
-	ClientSecret string
 }
 
 type SMTPConfig struct {
@@ -116,10 +110,6 @@ func Load() {
 			MaxFileSize:       mustGetEnvAsInt64("MAX_FILE_SIZE"),
 			MaxFilesPerUpload: mustGetEnvAsInt("MAX_FILES_PER_UPLOAD"),
 			AllowedFileTypes:  mustGetEnv("ALLOWED_FILE_TYPES"),
-		},
-		GoogleOAuth: GoogleOAuthConfig{
-			ClientID:     getEnv("GOOGLE_CLIENT_ID"),
-			ClientSecret: getEnv("GOOGLE_CLIENT_SECRET"),
 		},
 		SMTP: SMTPConfig{
 			Host:     getEnv("SMTP_HOST"),

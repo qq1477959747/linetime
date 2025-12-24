@@ -1,20 +1,16 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { SignUpPage } from '@/components/ui/sign-up';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { spaceApi } from '@/lib/api';
 import { getErrorMessage } from '@/lib/utils';
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
-
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, googleLogin, isLoading, isAuthenticated } = useAuthStore();
+  const { register, isLoading, isAuthenticated } = useAuthStore();
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const googleInitialized = useRef(false);
 
   // 常用邮箱域名白名单
   const allowedEmailDomains = [
@@ -52,61 +48,11 @@ export default function RegisterPage() {
     }
   }, [router]);
 
-  // Google 登录回调
-  const handleGoogleCredentialResponse = useCallback(async (response: google.accounts.id.CredentialResponse) => {
-    setErrors({});
-    setIsGoogleLoading(true);
-
-    try {
-      await googleLogin(response.credential);
-      await handleAuthSuccess();
-    } catch (err) {
-      setErrors({ submit: getErrorMessage(err) });
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  }, [googleLogin, handleAuthSuccess]);
-
-  // 初始化 Google Sign-In
   useEffect(() => {
     if (isAuthenticated) {
       handleAuthSuccess();
-      return;
     }
-
-    if (!GOOGLE_CLIENT_ID) {
-      return;
-    }
-
-    if (googleInitialized.current) {
-      return;
-    }
-
-    const initializeGoogle = () => {
-      if (window.google?.accounts?.id) {
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: handleGoogleCredentialResponse,
-          auto_select: false,
-          cancel_on_tap_outside: true,
-        });
-        googleInitialized.current = true;
-      }
-    };
-
-    if (window.google?.accounts?.id) {
-      initializeGoogle();
-    } else {
-      const checkGoogle = setInterval(() => {
-        if (window.google?.accounts?.id) {
-          clearInterval(checkGoogle);
-          initializeGoogle();
-        }
-      }, 100);
-
-      setTimeout(() => clearInterval(checkGoogle), 5000);
-    }
-  }, [isAuthenticated, handleGoogleCredentialResponse, handleAuthSuccess]);
+  }, [isAuthenticated, handleAuthSuccess]);
 
   const handleSignUp = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -167,33 +113,6 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogleSignUp = () => {
-    setErrors({});
-
-    if (!GOOGLE_CLIENT_ID) {
-      setErrors({ submit: 'Google 登录未配置，请联系管理员' });
-      return;
-    }
-
-    if (!window.google?.accounts?.id) {
-      setErrors({ submit: 'Google 登录服务加载中，请稍后重试' });
-      return;
-    }
-
-    window.google.accounts.id.prompt((notification) => {
-      if (notification.isNotDisplayed()) {
-        const reason = notification.getNotDisplayedReason();
-        if (reason === 'opt_out_or_no_session') {
-          setErrors({ submit: '请先登录您的 Google 账号，或允许弹出窗口' });
-        } else if (reason === 'suppressed_by_user') {
-          setErrors({ submit: 'Google 登录已被禁用，请在浏览器设置中启用' });
-        } else {
-          setErrors({ submit: '无法显示 Google 登录，请检查浏览器设置或稍后重试' });
-        }
-      }
-    });
-  };
-
   const handleSignIn = () => {
     router.push('/login');
   };
@@ -208,9 +127,8 @@ export default function RegisterPage() {
       description="加入 LineTime，与亲朋好友一起记录美好时光"
       heroImageSrc="https://images.unsplash.com/photo-1462275646964-a0e3571f4f7f?w=1920&q=80"
       onSignUp={handleSignUp}
-      onGoogleSignUp={handleGoogleSignUp}
       onSignIn={handleSignIn}
-      isLoading={isLoading || isGoogleLoading}
+      isLoading={isLoading}
       errors={errors}
     />
   );

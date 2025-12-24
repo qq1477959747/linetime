@@ -67,22 +67,6 @@ func (h *Handler) GetMe(c *gin.Context) {
 	response.Success(c, user)
 }
 
-func (h *Handler) GoogleLogin(c *gin.Context) {
-	var req service.GoogleLoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "请求参数错误")
-		return
-	}
-
-	authResp, err := h.authService.GoogleLogin(c.Request.Context(), &req)
-	if err != nil {
-		response.Unauthorized(c, err.Error())
-		return
-	}
-
-	response.Success(c, authResp)
-}
-
 // ForgotPasswordRequest represents the forgot password request body
 type ForgotPasswordRequest struct {
 	Email string `json:"email" binding:"required,email"`
@@ -159,32 +143,4 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"message": "密码修改成功"})
-}
-
-// SetInitialPasswordRequest represents the set initial password request body
-type SetInitialPasswordRequest struct {
-	NewPassword string `json:"new_password" binding:"required,min=8"`
-}
-
-// SetInitialPassword handles POST /api/auth/set-password (for Google users)
-func (h *Handler) SetInitialPassword(c *gin.Context) {
-	userID, ok := middleware.GetCurrentUserID(c)
-	if !ok {
-		response.Unauthorized(c, "未授权")
-		return
-	}
-
-	var req SetInitialPasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "请求参数错误")
-		return
-	}
-
-	err := h.passwordResetService.SetInitialPassword(c.Request.Context(), userID, req.NewPassword)
-	if err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	response.Success(c, gin.H{"message": "密码设置成功"})
 }

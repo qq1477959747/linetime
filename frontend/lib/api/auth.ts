@@ -1,11 +1,6 @@
 import { apiClient } from './client';
 import type { LoginRequest, RegisterRequest, AuthResponse, User } from '@/types';
 
-// Google 登录请求类型
-export interface GoogleLoginRequest {
-  id_token: string;
-}
-
 export const authApi = {
   // 登录
   login: async (data: LoginRequest, rememberMe: boolean = true) => {
@@ -20,17 +15,6 @@ export const authApi = {
   register: async (data: RegisterRequest) => {
     const response = await apiClient.post<AuthResponse>('/auth/register', data);
     if (response.data?.access_token) {
-      // 注册默认记住用户
-      apiClient.setToken(response.data.access_token, response.data.refresh_token, true);
-    }
-    return response;
-  },
-
-  // Google 登录
-  googleLogin: async (idToken: string) => {
-    const response = await apiClient.post<AuthResponse>('/auth/google', { id_token: idToken });
-    if (response.data?.access_token) {
-      // Google 登录默认记住用户
       apiClient.setToken(response.data.access_token, response.data.refresh_token, true);
     }
     return response;
@@ -70,13 +54,6 @@ export const authApi = {
   changePassword: async (currentPassword: string, newPassword: string) => {
     return apiClient.post<{ message: string }>('/auth/change-password', {
       current_password: currentPassword,
-      new_password: newPassword,
-    });
-  },
-
-  // 设置初始密码（Google 用户）
-  setInitialPassword: async (newPassword: string) => {
-    return apiClient.post<{ message: string }>('/auth/set-password', {
       new_password: newPassword,
     });
   },

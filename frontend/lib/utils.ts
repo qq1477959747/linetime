@@ -54,11 +54,9 @@ export function throttle<T extends (...args: any[]) => any>(
 }
 
 export function getErrorMessage(error: any): string {
-  if (error?.response?.data?.message) {
-    return error.response.data.message;
-  }
+  // 直接返回 Error 对象的 message
   if (error?.message) {
     return error.message;
   }
-  return '发生未知错误';
+  return '发生未知错误，请稍后重试';
 }

@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
-	"github.com/qq1477959747/linetime/backend/config"
 	"github.com/qq1477959747/linetime/backend/internal/api/auth"
 	"github.com/qq1477959747/linetime/backend/internal/api/event"
 	"github.com/qq1477959747/linetime/backend/internal/api/space"
@@ -38,21 +37,18 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 		authGroup := v1.Group("/auth")
 		{
 			userRepo := repository.NewUserRepository(db)
-			googleOAuthService := service.NewGoogleOAuthService(config.AppConfig.GoogleOAuth.ClientID)
-			authService := service.NewAuthService(userRepo, googleOAuthService)
+			authService := service.NewAuthService(userRepo)
 			emailService := service.NewSMTPEmailService()
 			passwordResetService := service.NewPasswordResetService(userRepo, emailService)
 			authHandler := auth.NewHandler(authService, passwordResetService)
 
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
-			authGroup.POST("/google", authHandler.GoogleLogin)
 			authGroup.GET("/me", middleware.AuthMiddleware(), authHandler.GetMe)
 			// Password reset routes
 			authGroup.POST("/forgot-password", authHandler.ForgotPassword)
 			authGroup.POST("/reset-password", authHandler.ResetPassword)
 			authGroup.POST("/change-password", middleware.AuthMiddleware(), authHandler.ChangePassword)
-			authGroup.POST("/set-password", middleware.AuthMiddleware(), authHandler.SetInitialPassword)
 		}
 
 		// 空间路由

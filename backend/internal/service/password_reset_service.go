@@ -58,9 +58,9 @@ func (s *PasswordResetService) RequestPasswordReset(ctx context.Context, email s
 		return "", err
 	}
 
-	// Check if user is Google-only (no password set)
-	if user.AuthProvider == "google" && user.PasswordHash == "" {
-		return "", errors.New("该账户使用 Google 登录，请使用 Google 登录")
+	// Check if user has a password
+	if user.PasswordHash == "" {
+		return "", errors.New("该账户未设置密码")
 	}
 
 	// Generate verification code
@@ -96,7 +96,6 @@ func (s *PasswordResetService) RequestPasswordReset(ctx context.Context, email s
 	// Return masked email
 	return utils.MaskEmail(email), nil
 }
-
 
 // VerifyAndResetPassword verifies the code and updates the user's password
 func (s *PasswordResetService) VerifyAndResetPassword(ctx context.Context, email, code, newPassword string) error {
@@ -170,9 +169,9 @@ func (s *PasswordResetService) ChangePassword(ctx context.Context, userID uuid.U
 		return errors.New("用户不存在")
 	}
 
-	// Check if user has a password (not Google-only)
+	// Check if user has a password
 	if user.PasswordHash == "" {
-		return errors.New("您尚未设置密码，请先设置密码")
+		return errors.New("您尚未设置密码")
 	}
 
 	// Verify current password
@@ -199,38 +198,6 @@ func (s *PasswordResetService) ChangePassword(ctx context.Context, userID uuid.U
 	// Invalidate any existing password reset tokens
 	tokenKey := passwordResetKeyPrefix + user.Email
 	storage.Delete(ctx, tokenKey)
-
-	return nil
-}
-
-// SetInitialPassword sets a password for a Google-only user
-func (s *PasswordResetService) SetInitialPassword(ctx context.Context, userID uuid.UUID, newPassword string) error {
-	// Get user
-	user, err := s.userRepo.FindByID(userID)
-	if err != nil {
-		return errors.New("用户不存在")
-	}
-
-	// Check if user already has a password
-	if user.PasswordHash != "" {
-		return errors.New("您已设置密码，请使用修改密码功能")
-	}
-
-	// Validate new password
-	if !validator.IsValidPassword(newPassword) {
-		return errors.New("密码必须至少8位，包含字母和数字")
-	}
-
-	// Hash new password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("密码加密失败: %w", err)
-	}
-
-	// Update password and auth provider
-	if err := s.userRepo.UpdatePassword(userID, string(hashedPassword)); err != nil {
-		return fmt.Errorf("设置密码失败: %w", err)
-	}
 
 	return nil
 }
