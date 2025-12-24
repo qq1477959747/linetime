@@ -144,3 +144,56 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 
 	response.Success(c, gin.H{"message": "密码修改成功"})
 }
+
+// SendLoginCodeRequest represents the send login code request body
+type SendLoginCodeRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// SendLoginCode handles POST /api/auth/send-login-code
+func (h *Handler) SendLoginCode(c *gin.Context) {
+	var req SendLoginCodeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "请输入有效的邮箱地址")
+		return
+	}
+
+	maskedEmail, err := h.authService.SendLoginCode(c.Request.Context(), &service.EmailLoginCodeRequest{
+		Email: req.Email,
+	})
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.Success(c, gin.H{
+		"message":      "验证码已发送",
+		"masked_email": maskedEmail,
+	})
+}
+
+// LoginWithCodeRequest represents the login with code request body
+type LoginWithCodeRequest struct {
+	Email string `json:"email" binding:"required,email"`
+	Code  string `json:"code" binding:"required,len=6"`
+}
+
+// LoginWithCode handles POST /api/auth/login-code
+func (h *Handler) LoginWithCode(c *gin.Context) {
+	var req LoginWithCodeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "请求参数错误")
+		return
+	}
+
+	authResp, err := h.authService.LoginWithCode(c.Request.Context(), &service.EmailLoginRequest{
+		Email: req.Email,
+		Code:  req.Code,
+	})
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.Success(c, authResp)
+}

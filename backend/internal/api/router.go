@@ -37,13 +37,15 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 		authGroup := v1.Group("/auth")
 		{
 			userRepo := repository.NewUserRepository(db)
-			authService := service.NewAuthService(userRepo)
 			emailService := service.NewSMTPEmailService()
+			authService := service.NewAuthService(userRepo, emailService)
 			passwordResetService := service.NewPasswordResetService(userRepo, emailService)
 			authHandler := auth.NewHandler(authService, passwordResetService)
 
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
+			authGroup.POST("/send-login-code", authHandler.SendLoginCode)
+			authGroup.POST("/login-code", authHandler.LoginWithCode)
 			authGroup.GET("/me", middleware.AuthMiddleware(), authHandler.GetMe)
 			// Password reset routes
 			authGroup.POST("/forgot-password", authHandler.ForgotPassword)

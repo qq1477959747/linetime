@@ -11,6 +11,20 @@ export const authApi = {
     return response;
   },
 
+  // 发送登录验证码
+  sendLoginCode: async (email: string) => {
+    return apiClient.post<{ message: string; masked_email: string }>('/auth/send-login-code', { email });
+  },
+
+  // 验证码登录
+  loginWithCode: async (email: string, code: string, rememberMe: boolean = true) => {
+    const response = await apiClient.post<AuthResponse>('/auth/login-code', { email, code });
+    if (response.data?.access_token) {
+      apiClient.setToken(response.data.access_token, response.data.refresh_token, rememberMe);
+    }
+    return response;
+  },
+
   // 注册
   register: async (data: RegisterRequest) => {
     const response = await apiClient.post<AuthResponse>('/auth/register', data);
