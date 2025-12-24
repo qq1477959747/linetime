@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
-import { SignUpPage } from '@/components/ui/sign-up';
+import { SignUpGlassPage } from '@/components/ui/sign-up-glass';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { spaceApi } from '@/lib/api';
 import { getErrorMessage } from '@/lib/utils';
@@ -99,14 +99,9 @@ export default function RegisterPage() {
   };
 
   return (
-    <SignUpPage
-      title={
-        <span className="font-semibold text-foreground tracking-tight">
-          创建账号
-        </span>
-      }
+    <SignUpGlassPage
+      title="创建账号"
       description="加入 LineTime，与亲朋好友一起记录美好时光"
-      heroImageSrc="https://images.unsplash.com/photo-1462275646964-a0e3571f4f7f?w=1920&q=80"
       onSignUp={handleSignUp}
       onSignIn={handleSignIn}
       isLoading={isLoading}

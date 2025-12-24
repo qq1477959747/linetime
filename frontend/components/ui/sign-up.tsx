@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Eye, EyeOff, ChevronDown } from 'lucide-react';
 
 // 常用邮箱后缀列表
@@ -81,11 +82,13 @@ const EmailInput = ({
   setEmailDomain: (value: string) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -93,48 +96,86 @@ const EmailInput = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // 计算下拉菜单位置
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.right - 192 + window.scrollX, // 192 = w-48
+        width: 192,
+      });
+    }
+  }, [isOpen]);
+
+  const handleSelectDomain = (domain: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEmailDomain(domain);
+    setIsOpen(false);
+  };
+
+  const handleToggleDropdown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) setIsOpen(!isOpen);
+  };
+
+  // 下拉菜单内容
+  const dropdownContent = isOpen && typeof window !== 'undefined' ? createPortal(
+    <div 
+      className="fixed bg-background border border-border rounded-xl shadow-2xl py-1 max-h-60 overflow-y-auto"
+      style={{ 
+        top: dropdownPosition.top,
+        left: dropdownPosition.left,
+        width: dropdownPosition.width,
+        zIndex: 99999,
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      {EMAIL_DOMAINS.map((domain) => (
+        <div
+          key={domain.value}
+          onMouseDown={(e) => handleSelectDomain(domain.value, e)}
+          className={`w-full px-4 py-2.5 text-left text-sm hover:bg-violet-500/10 transition-colors cursor-pointer select-none ${
+            emailDomain === domain.value ? 'text-violet-500 bg-violet-500/10' : ''
+          }`}
+        >
+          <span className="font-medium">{domain.value}</span>
+          <span className="text-muted-foreground ml-2 text-xs">{domain.label}</span>
+        </div>
+      ))}
+    </div>,
+    document.body
+  ) : null;
+
   return (
-    <div className={`flex rounded-2xl border ${hasError ? 'border-red-400' : 'border-border'} bg-foreground/5 backdrop-blur-sm transition-colors focus-within:border-violet-400/70 focus-within:bg-violet-500/10`}>
-      <input
-        type="text"
-        value={emailPrefix}
-        onChange={(e) => setEmailPrefix(e.target.value.replace(/[@\s]/g, ''))}
-        placeholder="邮箱用户名"
-        disabled={disabled}
-        className="flex-1 bg-transparent text-sm p-4 rounded-l-2xl focus:outline-none disabled:opacity-50 min-w-0"
-      />
-      <div className="flex items-center text-muted-foreground px-1">@</div>
-      <div className="relative" ref={dropdownRef}>
+    <div ref={containerRef} className="relative">
+      <div className={`flex rounded-2xl border ${hasError ? 'border-red-400' : 'border-border'} bg-foreground/5 backdrop-blur-sm transition-colors focus-within:border-violet-400/70 focus-within:bg-violet-500/10`}>
+        <input
+          type="text"
+          value={emailPrefix}
+          onChange={(e) => setEmailPrefix(e.target.value.replace(/[@\s]/g, ''))}
+          placeholder="邮箱用户名"
+          disabled={disabled}
+          className="flex-1 bg-transparent text-sm p-4 rounded-l-2xl focus:outline-none disabled:opacity-50 min-w-0"
+        />
+        <div className="flex items-center text-muted-foreground px-1">@</div>
         <button
+          ref={buttonRef}
           type="button"
-          onClick={() => !disabled && setIsOpen(!isOpen)}
+          onMouseDown={handleToggleDropdown}
           disabled={disabled}
           className="flex items-center gap-1 px-3 py-4 text-sm hover:bg-foreground/5 rounded-r-2xl transition-colors disabled:opacity-50"
         >
           <span className="text-foreground">{emailDomain}</span>
           <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
-        {isOpen && (
-          <div className="absolute right-0 top-full mt-1 w-48 bg-background border border-border rounded-xl shadow-lg z-50 py-1 max-h-60 overflow-y-auto">
-            {EMAIL_DOMAINS.map((domain) => (
-              <button
-                key={domain.value}
-                type="button"
-                onClick={() => {
-                  setEmailDomain(domain.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full px-4 py-2 text-left text-sm hover:bg-foreground/5 transition-colors ${
-                  emailDomain === domain.value ? 'text-violet-500 bg-violet-500/10' : ''
-                }`}
-              >
-                <span className="font-medium">{domain.value}</span>
-                <span className="text-muted-foreground ml-2 text-xs">{domain.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
+      
+      {/* Portal dropdown */}
+      {dropdownContent}
+      
       {/* Hidden input for form submission */}
       <input type="hidden" name="email" value={emailPrefix ? `${emailPrefix}@${emailDomain}` : ''} />
     </div>

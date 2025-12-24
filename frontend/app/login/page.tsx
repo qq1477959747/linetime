@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
-import { SignInPage } from '@/components/ui/sign-in';
+import { SignInGlassPage } from '@/components/ui/sign-in-glass';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { authApi, spaceApi } from '@/lib/api';
 import { getErrorMessage } from '@/lib/utils';
@@ -90,14 +90,9 @@ export default function LoginPage() {
   };
 
   return (
-    <SignInPage
-      title={
-        <span className="font-semibold text-foreground tracking-tight">
-          欢迎回来
-        </span>
-      }
+    <SignInGlassPage
+      title="欢迎回来"
       description="登录您的账号，继续记录美好时光"
-      heroImageSrc="https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=1920&q=80"
       onSignIn={handleSignIn}
       onSendCode={handleSendCode}
       onCodeLogin={handleCodeLogin}
