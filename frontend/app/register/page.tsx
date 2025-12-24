@@ -12,23 +12,6 @@ export default function RegisterPage() {
   const { register, isLoading, isAuthenticated } = useAuthStore();
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // 常用邮箱域名白名单
-  const allowedEmailDomains = [
-    'qq.com', '163.com', '126.com', 'sina.com', 'sina.cn',
-    'sohu.com', 'yeah.net', '139.com', 'wo.cn', '189.cn',
-    'aliyun.com', 'foxmail.com',
-    'gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com',
-    'icloud.com', 'live.com', 'msn.com', 'aol.com',
-    'protonmail.com', 'zoho.com'
-  ];
-
-  const isAllowedEmailDomain = (email: string): boolean => {
-    const parts = email.split('@');
-    if (parts.length !== 2) return false;
-    const domain = parts[1].toLowerCase();
-    return allowedEmailDomains.includes(domain);
-  };
-
   // 登录/注册成功后的跳转逻辑
   const handleAuthSuccess = useCallback(async () => {
     const { fetchUser, clearDefaultSpace } = useAuthStore.getState();
@@ -75,13 +58,11 @@ export default function RegisterPage() {
       newErrors.username = '用户名最多 50 位';
     }
 
-    // 验证邮箱
+    // 验证邮箱（邮箱后缀已通过下拉选择限制为白名单）
     if (!email?.trim()) {
-      newErrors.email = '请输入邮箱';
+      newErrors.email = '请输入邮箱用户名';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = '邮箱格式不正确';
-    } else if (!isAllowedEmailDomain(email)) {
-      newErrors.email = '请使用常用邮箱注册';
+      newErrors.email = '请输入邮箱用户名';
     }
 
     // 验证密码

@@ -1,7 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Eye, EyeOff, ChevronDown } from 'lucide-react';
+
+// 常用邮箱后缀列表
+const EMAIL_DOMAINS = [
+  { value: 'qq.com', label: 'QQ邮箱' },
+  { value: '163.com', label: '网易邮箱' },
+  { value: '126.com', label: '126邮箱' },
+  { value: 'gmail.com', label: 'Gmail' },
+  { value: 'outlook.com', label: 'Outlook' },
+  { value: 'foxmail.com', label: 'Foxmail' },
+  { value: 'sina.com', label: '新浪邮箱' },
+  { value: 'aliyun.com', label: '阿里云邮箱' },
+  { value: 'icloud.com', label: 'iCloud' },
+  { value: 'hotmail.com', label: 'Hotmail' },
+];
 
 // --- TYPE DEFINITIONS ---
 export interface SignUpTestimonial {
@@ -50,6 +64,83 @@ const TestimonialCard = ({ testimonial, delay }: { testimonial: SignUpTestimonia
   </div>
 );
 
+// 邮箱输入组件
+const EmailInput = ({ 
+  hasError, 
+  disabled,
+  emailPrefix,
+  setEmailPrefix,
+  emailDomain,
+  setEmailDomain,
+}: { 
+  hasError?: boolean;
+  disabled?: boolean;
+  emailPrefix: string;
+  setEmailPrefix: (value: string) => void;
+  emailDomain: string;
+  setEmailDomain: (value: string) => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className={`flex rounded-2xl border ${hasError ? 'border-red-400' : 'border-border'} bg-foreground/5 backdrop-blur-sm transition-colors focus-within:border-violet-400/70 focus-within:bg-violet-500/10`}>
+      <input
+        type="text"
+        value={emailPrefix}
+        onChange={(e) => setEmailPrefix(e.target.value.replace(/[@\s]/g, ''))}
+        placeholder="邮箱用户名"
+        disabled={disabled}
+        className="flex-1 bg-transparent text-sm p-4 rounded-l-2xl focus:outline-none disabled:opacity-50 min-w-0"
+      />
+      <div className="flex items-center text-muted-foreground px-1">@</div>
+      <div className="relative" ref={dropdownRef}>
+        <button
+          type="button"
+          onClick={() => !disabled && setIsOpen(!isOpen)}
+          disabled={disabled}
+          className="flex items-center gap-1 px-3 py-4 text-sm hover:bg-foreground/5 rounded-r-2xl transition-colors disabled:opacity-50"
+        >
+          <span className="text-foreground">{emailDomain}</span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {isOpen && (
+          <div className="absolute right-0 top-full mt-1 w-48 bg-background border border-border rounded-xl shadow-lg z-50 py-1 max-h-60 overflow-y-auto">
+            {EMAIL_DOMAINS.map((domain) => (
+              <button
+                key={domain.value}
+                type="button"
+                onClick={() => {
+                  setEmailDomain(domain.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full px-4 py-2 text-left text-sm hover:bg-foreground/5 transition-colors ${
+                  emailDomain === domain.value ? 'text-violet-500 bg-violet-500/10' : ''
+                }`}
+              >
+                <span className="font-medium">{domain.value}</span>
+                <span className="text-muted-foreground ml-2 text-xs">{domain.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Hidden input for form submission */}
+      <input type="hidden" name="email" value={emailPrefix ? `${emailPrefix}@${emailDomain}` : ''} />
+    </div>
+  );
+};
+
 // --- MAIN COMPONENT ---
 export const SignUpPage: React.FC<SignUpPageProps> = ({
   title = <span className="font-light text-foreground tracking-tighter">创建账号</span>,
@@ -63,6 +154,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [emailPrefix, setEmailPrefix] = useState('');
+  const [emailDomain, setEmailDomain] = useState('qq.com');
 
   return (
     <div className="h-[100dvh] flex flex-col md:flex-row font-sans w-[100dvw]">
@@ -108,15 +201,14 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
               {/* Email */}
               <div className="animate-element animate-delay-400">
                 <label className="text-sm font-medium text-muted-foreground">邮箱</label>
-                <GlassInputWrapper hasError={!!errors.email}>
-                  <input
-                    name="email"
-                    type="email"
-                    placeholder="请使用常用邮箱"
-                    disabled={isLoading}
-                    className="w-full bg-transparent text-sm p-4 rounded-2xl focus:outline-none disabled:opacity-50"
-                  />
-                </GlassInputWrapper>
+                <EmailInput
+                  hasError={!!errors.email}
+                  disabled={isLoading}
+                  emailPrefix={emailPrefix}
+                  setEmailPrefix={setEmailPrefix}
+                  emailDomain={emailDomain}
+                  setEmailDomain={setEmailDomain}
+                />
                 {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
               </div>
 
